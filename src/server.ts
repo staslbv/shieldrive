@@ -15,7 +15,7 @@ db.initialize().then(()=>{
    client.Init();
    client.Listen((process.env.PORT || 3000)).then(()=>{
         console.log('OnRestClientStartupComplete!');  
-
+/*
         const zurl: string = 'https://www.dropbox.com/home/Please%20wait?preview=contract-services.docx';
         URL.registerUrl(db, zurl).then((e)=>{
             console.log('URL DECOMPOSED: ');
@@ -25,10 +25,7 @@ db.initialize().then(()=>{
 
         });
 
-
-
-
-
+*/
 });
 },(reject)=>{
     console.log('Server error, unable to set up database ...');
