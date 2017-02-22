@@ -93,6 +93,11 @@ export class CRest{
         this.app.get('/login', CRest.requireAuthorization, (req,res)=>{
             res.json(req.user);
         });
+        
+        this.app.get('/oauth2callback',(req,res)=>{
+            
+            return res.status(200).send();
+        });
     
         this.app.post('/list_folder',(req,res)=>{
             dropbox.sync_folder(req.body.path).then((resolve)=>{

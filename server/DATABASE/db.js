@@ -3,10 +3,17 @@ const Sequelize = require("sequelize");
 class CDb {
     initialize() {
         try {
-            this.sequelize = new Sequelize(undefined, undefined, undefined, {
-                "dialect": "sqlite",
-                "storage": __dirname + "/localdb.sqlite"
-            });
+            if (process.env.NODE_ENV == 'production') {
+                this.sequelize = new Sequelize(process.env.DATABASE_URL, {
+                    dialect: 'postgres'
+                });
+            }
+            else {
+                this.sequelize = new Sequelize(undefined, undefined, undefined, {
+                    "dialect": "sqlite",
+                    "storage": __dirname + "/localdb.sqlite"
+                });
+            }
             this.user = this.sequelize.import(__dirname + '/model/user.js');
             this.account = this.sequelize.import(__dirname + '/model/account.js');
             this.token = this.sequelize.import(__dirname + '/model/token.js');
