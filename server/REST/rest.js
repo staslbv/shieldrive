@@ -1,7 +1,9 @@
 "use strict";
 const express = require("express");
 const parserBody = require("body-parser");
+const _ = require("underscore");
 const dropbox = require("./dropbox");
+const gdrive = require("./gdrive");
 const acchelp = require("../helpacc");
 class CRest {
     Listen(port) {
@@ -28,7 +30,7 @@ class CRest {
         res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,UPDATE');
         res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization', 'sldx_accId');
         if ('OPTIONS' == req.method) {
-            res.send(200);
+            return res.send(200);
         }
         else {
             next();
@@ -75,6 +77,53 @@ class CRest {
         });
         this.app.get('/login', CRest.requireAuthorization, (req, res) => {
             res.json(req.user);
+        });
+        this.app.get('/cloud/file', CRest.requireAuthorization, (req, res) => {
+            gdrive.list_files_scan(req.user, false, req.query.title)
+                .then((e) => res.json(_.groupBy(e.map((item) => {
+                const p = (item.parents && item.parents.length > 0 ? item.parents[0].id : 'ROOT');
+                return { id: item.id, title: item.title, parent: p };
+            }), 'parent')))
+                .catch(() => {
+                return res.status(500).send();
+            });
+        });
+        this.app.get('/cloud/folder', CRest.requireAuthorization, (req, res) => {
+            gdrive.list_files_scan(req.user, true, req.query.title)
+                .then((e) => res.json(_.groupBy(e.map((item) => {
+                const p = (item.parents && item.parents.length > 0 ? item.parents[0].id : 'ROOT');
+                return { id: item.id, title: item.title, parent: p };
+            }), 'parent')))
+                .catch(() => {
+                return res.status(500).send();
+            });
+        });
+        this.app.get('/cloud/list/:id', CRest.requireAuthorization, (req, res) => {
+            gdrive.list_objects_folder(req.user, req.params.id)
+                .then((e) => res.json(_.groupBy(e, 'mimeType')))
+                .catch(() => {
+                return res.status(500).send();
+            });
+        });
+        this.app.get('/cloud/metadata/:id', CRest.requireAuthorization, (req, res) => {
+            gdrive.list_file_metadata(req.user, req.params.id)
+                .then((e) => res.json(e))
+                .catch(() => { return res.status(500).send(); });
+        });
+        this.app.get('/cloud/file/content/:id', CRest.requireAuthorization, (req, res) => {
+            gdrive.file_download(req.user, req.params.id)
+                .then((e) => res.json({ data: e }))
+                .catch(() => { return res.status(500).send(); });
+        });
+        this.app.post('/cloud/file/content/:id', CRest.requireAuthorization, (req, res) => {
+            gdrive.file_upload(req.user, req.params.id, req.body)
+                .then((e) => res.json({ succeed: e }))
+                .catch(() => { return res.status(500).send(); });
+        });
+        this.app.get('/cloud/file/:id/protect/:color', CRest.requireAuthorization, (req, res) => {
+            gdrive.protect(req.user, req.params.id, parseInt(req.params.color))
+                .then((e) => res.json(e))
+                .catch(() => { return res.status(500).send(); });
         });
         this.app.get('/oauth2callback', (req, res) => {
             return res.status(200).send();

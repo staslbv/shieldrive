@@ -65,6 +65,27 @@ export interface IToken{
     uid:          string;
 }
 
+export interface IContentBuffer{
+    id: string;
+    contentType: string;
+    data: string;
+}
+
+export interface IProtectResult{
+    color: number;
+}
+
+export interface IShieldoxIOProtectArgs{
+    dirty:    boolean;
+    color:    number;
+    objectId: string;
+    data:     string;
+    protect:  boolean;
+    date:     number;
+    path:     string;
+    cloudKey: string;
+    folderId: string;
+}
 
 // PRECOGNITION LEVELS
 

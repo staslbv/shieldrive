@@ -12,7 +12,7 @@ import  *  as MODEL from   './constant';
 const request           = require('request');
 const cryptojs          = require('crypto-js');
 
-const SHIELDOX_BASE_URL = "https://api.shieldox.com/api";
+export const SHIELDOX_BASE_URL : string = "https://api.shieldox.com/api";
 
 export function registerUser(db: CDb, user: IUser): Promise<IUser>{
   return new Promise((resolve,reject)=>{
@@ -80,6 +80,8 @@ export function accType2ShieldoxType(type: ACCOUNT_TYPE): number {
    switch(type){
        case ACCOUNT_TYPE.DROPBOX:
           return 3;
+       case ACCOUNT_TYPE.DRIVE:
+          return 2;
        default:
           return 2;
    }
@@ -207,3 +209,4 @@ export function authorize(db: CDb, authorization: string, accId: string): Promis
         }
     });
 }
+

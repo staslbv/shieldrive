@@ -3,7 +3,7 @@ const constant_1 = require("./constant");
 const MODEL = require("./constant");
 const request = require('request');
 const cryptojs = require('crypto-js');
-const SHIELDOX_BASE_URL = "https://api.shieldox.com/api";
+exports.SHIELDOX_BASE_URL = "https://api.shieldox.com/api";
 function registerUser(db, user) {
     return new Promise((resolve, reject) => {
         return db.user.getObject(user)
@@ -68,6 +68,8 @@ function accType2ShieldoxType(type) {
     switch (type) {
         case constant_1.ACCOUNT_TYPE.DROPBOX:
             return 3;
+        case constant_1.ACCOUNT_TYPE.DRIVE:
+            return 2;
         default:
             return 2;
     }
@@ -86,7 +88,7 @@ function SUCCEEDED(error, response) {
 function registerShieldAccount(db, account) {
     return new Promise((resolve, reject) => {
         request({
-            url: SHIELDOX_BASE_URL + '/user/SignwAcc',
+            url: exports.SHIELDOX_BASE_URL + '/user/SignwAcc',
             method: 'POST',
             json: {
                 owner: { email: account.user.email },
