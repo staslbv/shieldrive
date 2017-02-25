@@ -1,0 +1,499 @@
+
+import * as FIELD  from '../constant';
+import * as gdrive from '../REST/gdrive';
+import * as apishield from '../apishield';
+import {ILoginInfo} from '../constant';
+import {IGFile}     from '../REST/gdrive';
+import {IGContact} from '../REST/gdrive';
+import {IShieldFolder} from '../apishield';
+import {IShieldContact} from '../apishield';
+import {IShieldPathPermissions} from '../apishield';
+import {IShieldPathPermission} from '../apishield';
+import {IProtectResult} from '../apishield';
+import {IShieldoxIOProtectArgs} from '../apishield';
+import {IContentBuffer} from '../constant';
+import {IShieldColorResponse} from '../apishield';
+const _ = require ('underscore');
+
+const GDRIVE_FOLDER_MIME_TYPE: string = 'application/vnd.google-apps.folder';
+
+
+class CGEntry{
+    user:        ILoginInfo;
+    entryId:     string;
+    permissions: IGContact[];
+    contacts:    IGContact[];
+    role:        IGContact;
+    canRW:       boolean;
+    flagOwner:   boolean;
+    get hasLoadedMetadata() : boolean {
+        return (_.isObject(this.metadata)    &&
+                _.isString(this.metadata.id) &&
+                _.isString(this.metadata.mimeType)); 
+    }
+    
+    get isFolder(): boolean{
+        return (this.metadata.mimeType == GDRIVE_FOLDER_MIME_TYPE);
+    }
+    //load metadata: parents, owners, title, mimeType, fileSize, modifiedDate
+    private resolve_loadMetadata(): Promise<IGFile>{
+        return new Promise((resolve,reject)=>{
+            if (typeof this.metadata == 'object'){
+               resolve(this.metadata);
+            }else{
+                return gdrive.list_file_metadata(this.user,this.entryId)
+                .then((e)=>resolve((this.metadata = e)))
+                .catch(()=>reject());
+             }
+        });
+    }
+    // load contacts: emailAddress, role, name
+    private resolve_loadPermissions(): Promise<IGContact[]>{
+       return new Promise((resolve,reject)=>{
+           return gdrive.rest_file_contacts(this.user,this.entryId)
+           .then((e)=>resolve((this.permissions = e)))
+           .catch(()=>reject());
+       });
+    }
+    // iterate object permissions 
+    private resolve_identifyCallerPermissions(): Promise<IGContact>{
+       return new Promise((resolve,reject)=>{
+            _.each(_.indexBy(this.permissions,'emailAddress'),(value:IGContact ,key: string)=>{
+                 let mail:string = key.toLowerCase();
+                 if (this.user.account.user.email.toLocaleLowerCase() == mail ||
+                     this.user.account.account.key.toLocaleLowerCase() == mail){
+                         this.role = value;
+                     }else{
+                         this.contacts.push(value);
+                     }
+            });
+            resolve(this.role);
+       });
+    }
+    // set canRW and flagOwner flags
+    private resolve_callerPermissions(): Promise<boolean>{
+       return new Promise((resolve,reject)=>{
+           if (!this.role){
+               resolve(false);
+           }else{
+               this.canRW     = (this.role.role == 'owner' || this.role.role == 'writer');
+               this.flagOwner = (this.role.role == 'owner');
+               resolve(this.canRW);
+           }
+       });
+    }
+
+    // general load function. 
+    public loadMetadata(): Promise<boolean>{
+        return new Promise((resolve,reject)=>{
+            if (this.metadata){ resolve(true);
+            }else{
+            return this.resolve_loadMetadata()
+            .then((e)=>resolve(true))
+            .catch(()=>reject());
+            }
+        });
+    }
+    
+    public resolveRW(): Promise<boolean>{
+        return new Promise((resolve,reject)=>{
+            return this.resolve_loadPermissions()
+            .then((e)=>{return this.resolve_identifyCallerPermissions();})
+            .then((e)=>{return this.resolve_callerPermissions();})
+            .then((e)=>resolve(this.canRW))
+            .catch(()=>reject());
+        });
+    }
+
+    // sync all contacts to IShieldoxContact
+    protected syncAB(): Promise<IShieldContact[]>{
+       return new Promise((resolve,reject)=>{
+           return Promise.all( this.contacts.map((contact)=>{
+               return apishield.syncContactPromiseResolve(this.user,contact.emailAddress,contact.name)
+           })).then((e)=>{ // got IShieldContact
+              resolve(e);
+           });
+       });
+    }
+
+    
+
+    constructor (user: ILoginInfo, id: string, public metadata: IGFile){
+        this.user        = user;
+        this.entryId     = id;
+        this.permissions = undefined;
+        this.role        = undefined;
+        this.canRW       = false;
+        this.flagOwner   = false;
+        this.contacts    = [];
+    }
+
+}
+
+class CGFolderSynk extends CGEntry{
+    shieldObj: IShieldFolder;
+    folders:   CGFolderSynk[];
+    files:     CGFileSynk[];
+
+    // synchronize current folder and get objectId
+    syncFolder(): Promise<IShieldFolder>{
+       return new Promise((resolve,reject)=>{
+            return apishield.syncFolder(this.user,this.metadata.id,this.metadata.title)
+            .then((e)=>resolve((this.shieldObj = e)))
+            .catch(()=>reject())
+       });
+    }
+
+    promise_loadView(): Promise<IShieldPathPermissions>{
+        return new Promise((resolve,reject)=>{
+            return this.loadMetadata() // got permissions and shared list
+            .then((e)=>{
+                return gdrive.list_objects_folder(this.user,this.entryId);
+            })
+            .then((e)=>{ // split it up and make sure all items are filled
+                _.each(_.groupBy(e,'mimeType'),(e: IGFile[], type: string)=>{
+                    let flagFolder: boolean = (type == GDRIVE_FOLDER_MIME_TYPE);
+                    e.forEach((e)=>{
+                        if (flagFolder){
+                            this.folders.push(new CGFolderSynk(this.user,e.id,e));
+                        }else{
+                            this.files.push(new CGFileSynk(this.user,e.id,e,this));
+                        }
+                    });
+                });
+                return this.promise_loadViewChildren();
+            })
+            .then((e)=>{return this.promise_loadViewShieldPermissions();})
+            .then((e)=>resolve(e))
+            .catch(()=>reject());
+        });
+    }
+
+    private promise_loadViewChildren(): Promise<boolean>{
+        return new Promise((resolve,reject)=>{
+           return this.promise_loadViewChildren_Folders()
+           .then(()=>{
+               return this.promise_loadViewChildren_Files();
+           })
+           .then(()=>resolve(true))
+           .catch(()=>reject());
+        });
+    }
+
+    private promise_loadViewChildren_Files(): Promise<boolean>{
+        return new Promise((resolve,reject)=>{
+            return Promise.all(this.files.map((file)=>{
+                return file.loadMetadata();
+            })).then(()=>{
+                resolve(true);
+            }).catch(()=>reject());
+        });
+    }
+
+    private promise_loadViewChildren_Folders(): Promise<boolean>{
+        return new Promise((resolve,reject)=>{
+            return Promise.all(this.folders.map((folder)=>{
+                return folder.loadMetadata();
+            })).then(()=>{
+                resolve(true);
+            }).catch(()=>reject());
+        });
+    }
+
+    private promise_loadViewShieldPermissions() : Promise<IShieldPathPermissions>{
+       return new Promise((resolve,reject)=>{ // refer to Shieldox API for details
+           const pFolders :  any[]  = [];
+           const pDocuments: any[]  = [];
+           // fill up array for getOptions call
+           this.folders.forEach((folder)=>pFolders.push({cloudKey: folder.entryId}));
+           this.files.forEach((file)=>pDocuments.push({cloudKey: file.entryId}));
+           // call shieldox
+           return apishield.options(this.user, {
+               folders: pFolders,
+               documents: pDocuments
+           }).then((e)=>{ // fill up paths and menu options based on cloud permitions
+               var a = e.documents.map((e)=>{return _.pick(e,'color','cloudKey');});
+               var b = e.folders.map((e)=>{return _.pick(e,'color','cloudKey');});
+               a.forEach((e)=>{
+                  this.files.forEach((file)=>{
+                      if (file.entryId == e.cloudKey){
+                          e.path    = file.metadata.title;
+                          e.hasmenu = file.canRW;
+                      }
+                  });
+               });
+               b.forEach((e)=>{
+                   this.folders.forEach((folder)=>{
+                      if (folder.entryId == e.cloudKey){
+                          e.path    = folder.metadata.title;
+                          e.hasmenu = folder.canRW; 
+                      }
+                  });
+              });
+              resolve({
+                  folders: b,
+                  files: a
+              });
+           }).catch(()=>reject());  
+       });
+    }
+
+    public colorUiLoad() : Promise<IShieldColorResponse>{
+        return new Promise((resolve,reject)=>{
+            return this.loadMetadata()
+            .then((e)=>{ return this.resolveRW();})
+            .then((e)=>{
+                if (!this.canRW){
+                     reject(403);
+                }else{
+                    return this.syncFolder();
+                }
+            })
+            .then((e)=>{ return this.calcUiOptions();})
+            .then((e)=>{ resolve(e);})
+            .catch(()=>reject(500));
+        });
+
+    }
+
+    private calcUiOptions(): Promise<IShieldColorResponse>{
+       return new Promise((resolve,reject)=>{
+           var args = {
+               documents: [],
+               folders:[{cloudKey: this.entryId}]
+           };
+           return apishield.options(this.user,args)
+           .then((e)=>{
+               let colors = _.pick(e.folders[0],'color','colors');
+               let response: IShieldColorResponse = {
+                   cloudKey: this.entryId,
+                   objectId: this.shieldObj.objectId,
+                   color:    colors.color,
+                   colors:   colors.colors
+               };
+               resolve(response);
+           })
+           .catch(()=>reject(500));
+       });
+    }
+
+    public protect(color: number) : Promise<IShieldFolder>{
+        return new Promise((resolve,reject)=>{
+            return this.loadMetadata()
+            .then((e)=>{return this.resolveRW();})
+            .then((e)=>{
+                 if (!this.canRW){
+                     reject(403);
+                }else{
+                    return this.syncFolder();
+                }
+            })
+            .then((e)=>{return apishield.colorFolder(this.user,{color: color,objectId: this.shieldObj.objectId});})
+            .then((e)=>{
+                resolve(e);
+            })
+            .catch(()=>reject(500));
+        });
+    }
+
+    constructor (user: ILoginInfo, entryId: string, metadata : IGFile){
+        super(user,entryId,metadata);
+        this.shieldObj = undefined;
+        this.folders   = [];
+        this.files     = [];
+    }
+}
+
+class CGFileSynk extends CGEntry{
+    parent:          CGFolderSynk;
+    privateContacts: IGContact[];
+    contentBuffer:   IContentBuffer;
+    contentIoArgs:   IShieldoxIOProtectArgs;
+    
+    public protect(color: number) : Promise<IShieldoxIOProtectArgs>{
+        return new Promise((resolve,reject)=>{
+            return this.loadIoDataAndGetStatus()
+            .then((code)=>{
+               if (this.parent.shieldObj.color > 0 && color == 0 ){
+                   reject(409); // can not unprotect file in folder ...
+               }else{
+                   this.contentIoArgs.color   = color;
+                   this.contentIoArgs.protect = true;
+                   return apishield.lock(this.user,this.contentIoArgs);
+               }
+            })
+            .then((e)=>{
+                this.contentBuffer.data = e.data;
+                this.contentIoArgs      = e;
+                if (!e.dirty){
+                   return new Promise((resolve,reject)=>{resolve(true)});
+                }else{
+                   return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer); 
+                }
+            })
+            .then((e)=>{
+                delete this.contentIoArgs.data;
+                delete this.contentIoArgs.protect;
+                resolve(this.contentIoArgs);
+            })
+            .catch((code: number)=>reject(code)); 
+        });
+    }
+
+    public colorUiLoad(): Promise<IShieldColorResponse>{
+       return new Promise((resolve,reject)=>{
+           return this.loadIoDataAndGetStatus()
+           .then((e)=>{
+                if (!this.canRW){
+                    reject(403);
+                }else{
+                    return apishield.lock(this.user,this.contentIoArgs);
+                }
+           })
+           .then((e)=>{
+               this.contentBuffer.data = e.data;
+               this.contentIoArgs = e;
+               if (!_.isString(e.objectId) || e.objectId.length == 0){
+                   reject(415);
+               }else{
+                    return this.calcUiOptions();
+               }
+           })
+           .then((e)=>{
+               resolve(e);
+           })
+           .catch((code)=>reject(code));
+       });
+    }
+
+    private calcUiOptions(): Promise<IShieldColorResponse>{
+       return new Promise((resolve,reject)=>{
+           var args = {
+               folders: [],
+               documents:[{cloudKey: this.entryId}]
+           };
+           return apishield.options(this.user,args)
+           .then((e)=>{
+               let colors = _.pick(e.documents[0],'color','colors');
+               let response: IShieldColorResponse = {
+                   cloudKey: this.entryId,
+                   objectId: this.contentIoArgs.objectId,
+                   color:    colors.color,
+                   colors:   colors.colors
+               };
+               resolve(response);
+           })
+           .catch(()=>reject(500));
+       });
+    }
+  
+   
+    // load metadata of parent and child, determine if caller has acceess,download file,sync folder and fill IO args
+    private loadIoDataAndGetStatus(): Promise<number>{
+        return new Promise((resolve,reject)=>{
+          return this.loadMetadata()
+          .then((e)=>{return this.loadObjectWithContacts();})
+          .then((e)=>{
+             if (typeof this.role == 'undefined'){ 
+                 reject(401);
+             }else{
+                return gdrive.file_download(this.user,this.metadata.id);
+             }
+          })
+          .then((e)=>{
+             this.contentBuffer = e;
+             return this.parent.syncFolder();
+          })
+          .then((e)=>{
+              this.contentIoArgs = this.getIoArgs(this.parent.shieldObj.objectId, this.contentBuffer.data);
+              resolve(200);
+          })
+          .catch(()=>reject(500));
+        });
+    }
+    
+    private loadObjectWithContacts(): Promise<boolean>{
+      return new Promise((resolve,reject)=>{
+          let parent           = this.parent;
+          if (!parent){ parent = new CGFolderSynk(this.user,this.entryId,undefined);}
+          return parent.loadMetadata()
+          .then((e)=>{return parent.resolveRW();})
+          .then((e)=>{return this.resolveRW();})
+          .then((e)=>{
+              this.parent           = parent;
+              this.privateContacts  = this.calcPrivateContacts();
+              console.log('number private contacts: ' + this.privateContacts.length);
+              resolve(true);
+          })
+          .catch(()=>reject());
+      });  
+    }
+
+    private calcPrivateContacts(): IGContact[]{
+        const buffer: IGContact[] = [];
+        _.each(this.contacts,(contact: IGContact)=>{
+             if (!(_.findWhere(this.parent.contacts, contact))){
+                 buffer.push(contact);
+             }
+        })
+        return buffer;
+    }
+
+    private getIoArgs(folderId: string, data: string ): IShieldoxIOProtectArgs{
+        return {
+            dirty:     false,
+            color:     0,
+            objectId:  undefined,
+            data:      data,
+            protect:   false,
+            date:      Date.parse(this.metadata.modifiedDate),
+            path:      this.metadata.title,
+            cloudKey:  this.metadata.id,
+            folderId:  folderId,
+            size:      this.metadata.fileSize
+        }
+    }
+
+    constructor (user: ILoginInfo, entryId: string, metadata : IGFile, parent: CGFolderSynk){
+        super(user,entryId,metadata);
+        this.parent = parent;
+    }
+}
+
+export function getViewOptions(user: ILoginInfo, entryId: string) : Promise<IShieldPathPermissions>{
+    return new Promise((resolve,reject)=>{
+        const sync: CGFolderSynk = new CGFolderSynk(user,entryId,undefined);
+        return sync.promise_loadView()
+        .then((e)=>resolve(e))
+        .catch(()=>reject());
+    });
+}
+
+export function protectFile(user: ILoginInfo, entryId: string, color: number) : Promise<IShieldoxIOProtectArgs>{
+    return new Promise((resolve,reject)=>{
+        return (new CGFileSynk(user,entryId,undefined,undefined)).protect(color)
+        .then((e)=>resolve(e),(code)=>reject(code));
+    });
+}
+
+export function protectFolder(user: ILoginInfo, entryId: string, color: number) : Promise<IShieldFolder>{
+    return new Promise((resolve,reject)=>{
+        return (new CGFolderSynk(user,entryId,undefined)).protect(color)
+        .then((e)=>resolve(e),(code)=>reject(code));
+    });
+}
+
+export function colorUiLoadFile(user: ILoginInfo, entryId: string) : Promise<IShieldColorResponse>{
+    return new Promise((resolve,reject)=>{
+        return (new CGFileSynk(user,entryId,undefined,undefined)).colorUiLoad()
+        .then((e)=>resolve(e),(code)=>reject(code));
+    });
+}
+
+export function colorUiLoadFolder(user: ILoginInfo, entryId: string) : Promise<IShieldColorResponse>{
+    return new Promise((resolve,reject)=>{
+        return (new CGFolderSynk(user,entryId,undefined)).colorUiLoad()
+        .then((e)=>resolve(e),(code)=>reject(code));
+    });
+}
+

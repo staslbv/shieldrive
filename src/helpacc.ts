@@ -50,8 +50,7 @@ export function registerAccount(db: CDb, user: IUser, account: IAccount): Promis
     });
 }
 
-export function registerTokenAccount(db: CDb, user: IUser, account: IAccount, token: IToken ): Promise<IUserAccount>
-{
+export function registerTokenAccount(db: CDb, user: IUser, account: IAccount, token: IToken ): Promise<IUserAccount>{
     var user_account: IUserAccount;
     return new Promise((resolve,reject)=>{
         return registerUser(db,user).then((e)=>{

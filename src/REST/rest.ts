@@ -9,6 +9,7 @@ import {CDb} from '../DATABASE/db';
 import middleware =  require('../middleware');
 
 import * as acchelp from '../helpacc';
+import * as worker from '../worker/folder';
 
 export class CRest{
     app:               express;
@@ -99,7 +100,7 @@ export class CRest{
         this.app.get('/cloud/file', CRest.requireAuthorization, (req,res)=>{
              gdrive.list_files_scan(req.user,false,req.query.title)
             .then((e)=>res.json(_.groupBy(e.map((item)=>{
-                 const p : string = (item.parents && item.parents.length > 0 ? item.parents[0].id : 'ROOT');
+                 const p : string = (item.parents && item.parents.length > 0 ? item.parents[0].id : 'root');
                  return {id: item.id, title: item.title, parent: p};
             }),'parent')))
             .catch(()=>{
@@ -110,7 +111,7 @@ export class CRest{
         this.app.get('/cloud/folder', CRest.requireAuthorization, (req,res)=>{
             gdrive.list_files_scan(req.user,true,req.query.title)
            .then((e)=>res.json(_.groupBy(e.map((item)=>{
-                 const p : string = (item.parents && item.parents.length > 0 ? item.parents[0].id : 'ROOT');
+                 const p : string = (item.parents && item.parents.length > 0 ? item.parents[0].id : 'root');
                  return {id: item.id, title: item.title, parent: p};
             }),'parent')))
             .catch(()=>{
@@ -121,6 +122,38 @@ export class CRest{
          this.app.get('/cloud/list/:id', CRest.requireAuthorization, (req,res)=>{
             gdrive.list_objects_folder(req.user,req.params.id)
             .then((e)=>  res.json(_.groupBy(e,'mimeType')))
+            .catch(()=>{
+                 return res.status(500).send();
+            }); 
+        });
+
+        this.app.get('/cloud/folder/:id/options', CRest.requireAuthorization, (req,res)=>{
+             worker.getViewOptions(req.user,req.params.id)
+            .then((e)=>res.json(e))
+            .catch(()=>{
+                 return res.status(500).send();
+            }); 
+        });
+
+        this.app.get('/cloud/file/:id/colors', CRest.requireAuthorization, (req,res)=>{
+             worker.colorUiLoadFile(req.user,req.params.id)
+            .then((e)=>res.json(e))
+            .catch((code : number)=>{
+                 return res.status(code).send();
+            }); 
+        });
+
+        this.app.get('/cloud/folder/:id/colors', CRest.requireAuthorization, (req,res)=>{
+             worker.colorUiLoadFolder(req.user,req.params.id)
+            .then((e)=>res.json(e))
+            .catch((code : number)=>{
+                 return res.status(code).send();
+            }); 
+        });
+
+        this.app.get('/cloud/contact/:id', CRest.requireAuthorization, (req,res)=>{
+            gdrive.rest_file_contacts(req.user,req.params.id)
+            .then((e)=>  res.json(_.groupBy(e,'role')))
             .catch(()=>{
                  return res.status(500).send();
             }); 
@@ -145,43 +178,21 @@ export class CRest{
         });
 
         this.app.get('/cloud/file/:id/protect/:color', CRest.requireAuthorization, (req,res)=>{
-            gdrive.protect(req.user,req.params.id,parseInt(req.params.color))
+             // gdrive.protect(req.user,req.params.id,parseInt(req.params.color))
+             worker.protectFile(req.user,req.params.id,parseInt(req.params.color))
             .then((e)=>res.json(e))
-            .catch(()=>{return res.status(500).send();});
+            .catch((e : number)=>{return res.status(e).send();});
+        });
+
+        this.app.get('/cloud/folder/:id/protect/:color', CRest.requireAuthorization, (req,res)=>{
+             // gdrive.protect(req.user,req.params.id,parseInt(req.params.color))
+             worker.protectFolder(req.user,req.params.id,parseInt(req.params.color))
+            .then((e)=>res.json(e))
+            .catch((e : number)=>{return res.status(e).send();});
         });
 
         this.app.get('/oauth2callback', (req,res)=>{
             return res.status(200).send();
-        });
-    
-        this.app.post('/list_folder',(req,res)=>{
-            dropbox.sync_folder(req.body.path).then((resolve)=>{
-                res.json(resolve);
-            },(reject)=>{
-                return res.status(500).send();
-            });
-        });
-         this.app.post('/get_metadata',(req,res)=>{
-            dropbox.get_metadata(req.body.path).then((resolve)=>{
-                res.json(resolve);
-            },(reject)=>{
-                return res.status(500).send();
-            });
-        });
-        this.app.post('/download',(req,res)=>{
-            dropbox.download(req.body).then((resolve)=>{
-                 res.json({data: resolve});
-            },(reject)=>{
-                return res.status(500).send();
-            });
-        });
-        this.app.post('/upload',(req,res)=>{
-            dropbox.get_metadata(req.body.path).then((resolve)=>{
-                req.body.rev = resolve.rev;
-                console.log('rev: ' + req.body.rev);
-                return dropbox.upload(req.body);
-            }).then((e)=>{res.json(e);})
-            .catch((e)=>{ return res.status(500).send();});
         });
 
     }

@@ -1,46 +1,41 @@
 const  request = require('request');
 const  _ = require('underscore');
-
+import * as APISHIELD from '../apishield';
 import * as FIELD from   '../constant';
 import {ILoginInfo} from '../constant';
 import {IContentBuffer} from '../constant';
-import {IProtectResult} from '../constant';
-import {IShieldoxIOProtectArgs} from '../constant';
+import {IProtectResult} from '../apishield';
+import {IShieldoxIOProtectArgs} from '../apishield';
 import {SHIELDOX_BASE_URL} from '../helpacc';
 
-export interface IGCapability{
-    canEdit: boolean;
-    canComment: boolean;
-    canShare: boolean;
-    canCopy: boolean;
-    canReadRevisions: boolean;
-};
+
 export interface IGContact{
-    kind: string;
-    displayName: string;
-    me: boolean;
-    permissionId: string;
+    name: string;
     emailAddress: string;
-    isAuthenticatedUser: boolean;
+    role: string;
 };
 
+export interface IUsersPermissions{
+   items: IGContact[];
+};
+
+export interface IGUserPermission{
+    id: string; // me
+    role: string; // writer, owner
+}
+
 export interface IGFile{
-    kind:             string;
     id:               string;
     title:            string;
-    originalFilename: string;
     fileExtension:    string;
     md5Checksum:      string;
     mimeType:         string;
     createdDate:      string;
     modifiedDate:     string;
-    sharingUser:      IGContact;
-    owners:           IGContact[];
+    userPermission:   IGUserPermission;
     parents:          any[];
     fileSize:         number;
-    ownedByMe:        boolean;
     shared:           boolean;
-    editable:         boolean;
 };
 
 export const IGFile_FIELD  =  'id,title,fileExtension,fileSize,owners,parents';
@@ -77,6 +72,7 @@ function authorize(user: ILoginInfo): Promise<boolean>{
         resolve();
     });
 }
+
 
 function isValidMIME_Type(mime: string): boolean{
   const values : string[] = [
@@ -215,6 +211,38 @@ function rest_file_upload(user: ILoginInfo, content: IContentBuffer): Promise<bo
     });
 }
 
+export function rest_file_contacts(user: ILoginInfo, id: string): Promise<IGContact[]>{
+    return new Promise((resolve,reject)=>{
+        const url: string = '/drive/v2/files/' + id + '/permissions'
+        request({
+             url: GOOGLE_DRIVE_URL + url, 
+             method: 'GET',
+             headers: {"Authorization": getAuthHeader(user)},
+             json: true
+        },(error: any, response: any, body: IUsersPermissions)=>{
+            if(SUCCEEDED(error,response)){
+                const buffer: IGContact[] = [];
+                body.items.forEach((item)=>{
+                   if (_.isString(item.emailAddress)){
+                       item.emailAddress = item.emailAddress.toLowerCase().trim();
+                       if (item.emailAddress.length > 0)
+                       {
+                           buffer.push({
+                             emailAddress: item.emailAddress,
+                             name: item.name,
+                             role: item.role
+                           });
+                       }
+                   }
+                });
+                resolve(buffer);
+            }else{
+                reject();
+            }
+        });
+    });
+}
+
 export function list_files_scan(user: ILoginInfo, flagFolder: boolean, title: string): Promise<IGFile[]>{
     const result: IGFile[]  = [];
     return new Promise((resolve,reject)=>{
@@ -240,7 +268,6 @@ export function list_objects_folder(user: ILoginInfo, id: string) : Promise<IGFi
             return rest_list_object_folder(user, result, id, undefined);
         })
         .then((e: IGPagedFilesResponse)=>{
-            //resolve(result);
            _.each(_.groupBy(result.map((item)=>{return { 
                 id: item.id, title: item.title, mimeType: item.mimeType};
              }),'mimeType'),(value,key)=>{
@@ -311,103 +338,7 @@ export function file_upload(user: ILoginInfo, id: string, data: IContentBuffer) 
     });
 }
 
-export function rest_folder_shieldox_register(user: ILoginInfo, id: string): Promise<string>{
-     return new Promise((resolve,reject)=>{
-        console.log('folder id: ' + id);
-        request({
-             url: SHIELDOX_BASE_URL + '/account/CreateFolder', 
-             method: 'POST',
-             headers: {
-                 "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId": user.account.account.key,
-                 "sldx_accType": 2
-                },
-             json: {
-                 parentId: user.account.account.objectId,
-                 folderId: id,
-                 name: 'cloud'
-             }
 
-        },(error: any, response: any, body: any)=>{
-            if(SUCCEEDED(error,response)){
-                resolve(body.objectId);
-            }else{
-                reject();
-            }
-        });
-    });
-}
 
-export function rest_file_shieldox_protect(user: ILoginInfo, args: IShieldoxIOProtectArgs): Promise<IShieldoxIOProtectArgs>{
-    return new Promise((resolve,reject)=>{
-        request({
-             url: SHIELDOX_BASE_URL + '/meta/lock', 
-             method: 'POST',
-             headers: {
-                 "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId": user.account.account.key,
-                 "sldx_accType": 2
-                },
-             json: args
 
-        },(error: any, response: any, body: IShieldoxIOProtectArgs)=>{
-            if(SUCCEEDED(error,response)){
-                resolve(body);
-            }else{
-                reject();
-            }
-        });
-    });
-}
 
-export function protect(user: ILoginInfo, id: string, color: number) : Promise<IProtectResult>  {
-    var file:     IGFile;
-    var buffer:   IContentBuffer;
-    var vargs:    IShieldoxIOProtectArgs;
-    var folderId: string;
-    return new Promise((resolve,reject)=>{
-        return authorize(user)
-        .then(()=>list_file_metadata(user,id))
-        .then((e)=>{
-            file = e;
-            return rest_folder_shieldox_register(user,file.parents[0].id);
-        })
-        .then((e)=>{
-            folderId = e;
-            return file_download(user,id);
-        })
-        .then((e)=>{
-            buffer = e;
-            vargs = {
-                date:     Date.parse(file.modifiedDate),
-                path:     file.title,
-                color:    color,
-                cloudKey: file.id,
-                dirty:    false,
-                objectId: '',
-                protect:  true,
-                folderId: folderId,
-                data:     buffer.data,
-            };
-            return rest_file_shieldox_protect(user, vargs);
-        })
-        .then((e)=>{
-           if (!e.dirty){
-               resolve({ color: e.color});
-           }
-           else{
-               vargs.objectId     = e.objectId;
-               buffer.data        = e.data;
-               return file_upload(user,id,buffer);
-           }
-        })
-        .then((e)=>{
-            if (!e){
-                reject();
-            }else{
-                resolve({ color: vargs.color});
-            }
-        })
-        .catch(()=>reject());
-    });
-}

@@ -1,7 +1,6 @@
 "use strict";
 const request = require('request');
 const _ = require('underscore');
-const helpacc_1 = require("../helpacc");
 ;
 ;
 ;
@@ -164,6 +163,38 @@ function rest_file_upload(user, content) {
         });
     });
 }
+function rest_file_contacts(user, id) {
+    return new Promise((resolve, reject) => {
+        const url = '/drive/v2/files/' + id + '/permissions';
+        request({
+            url: GOOGLE_DRIVE_URL + url,
+            method: 'GET',
+            headers: { "Authorization": getAuthHeader(user) },
+            json: true
+        }, (error, response, body) => {
+            if (SUCCEEDED(error, response)) {
+                const buffer = [];
+                body.items.forEach((item) => {
+                    if (_.isString(item.emailAddress)) {
+                        item.emailAddress = item.emailAddress.toLowerCase().trim();
+                        if (item.emailAddress.length > 0) {
+                            buffer.push({
+                                emailAddress: item.emailAddress,
+                                name: item.name,
+                                role: item.role
+                            });
+                        }
+                    }
+                });
+                resolve(buffer);
+            }
+            else {
+                reject();
+            }
+        });
+    });
+}
+exports.rest_file_contacts = rest_file_contacts;
 function list_files_scan(user, flagFolder, title) {
     const result = [];
     return new Promise((resolve, reject) => {
@@ -189,7 +220,6 @@ function list_objects_folder(user, id) {
             return rest_list_object_folder(user, result, id, undefined);
         })
             .then((e) => {
-            //resolve(result);
             _.each(_.groupBy(result.map((item) => {
                 return {
                     id: item.id, title: item.title, mimeType: item.mimeType
@@ -264,105 +294,3 @@ function file_upload(user, id, data) {
     });
 }
 exports.file_upload = file_upload;
-function rest_folder_shieldox_register(user, id) {
-    return new Promise((resolve, reject) => {
-        console.log('folder id: ' + id);
-        request({
-            url: helpacc_1.SHIELDOX_BASE_URL + '/account/CreateFolder',
-            method: 'POST',
-            headers: {
-                "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
-            },
-            json: {
-                parentId: user.account.account.objectId,
-                folderId: id,
-                name: 'cloud'
-            }
-        }, (error, response, body) => {
-            if (SUCCEEDED(error, response)) {
-                resolve(body.objectId);
-            }
-            else {
-                reject();
-            }
-        });
-    });
-}
-exports.rest_folder_shieldox_register = rest_folder_shieldox_register;
-function rest_file_shieldox_protect(user, args) {
-    return new Promise((resolve, reject) => {
-        request({
-            url: helpacc_1.SHIELDOX_BASE_URL + '/meta/lock',
-            method: 'POST',
-            headers: {
-                "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
-            },
-            json: args
-        }, (error, response, body) => {
-            if (SUCCEEDED(error, response)) {
-                resolve(body);
-            }
-            else {
-                reject();
-            }
-        });
-    });
-}
-exports.rest_file_shieldox_protect = rest_file_shieldox_protect;
-function protect(user, id, color) {
-    var file;
-    var buffer;
-    var vargs;
-    var folderId;
-    return new Promise((resolve, reject) => {
-        return authorize(user)
-            .then(() => list_file_metadata(user, id))
-            .then((e) => {
-            file = e;
-            return rest_folder_shieldox_register(user, file.parents[0].id);
-        })
-            .then((e) => {
-            folderId = e;
-            return file_download(user, id);
-        })
-            .then((e) => {
-            buffer = e;
-            vargs = {
-                date: Date.parse(file.modifiedDate),
-                path: file.title,
-                color: color,
-                cloudKey: file.id,
-                dirty: false,
-                objectId: '',
-                protect: true,
-                folderId: folderId,
-                data: buffer.data,
-            };
-            return rest_file_shieldox_protect(user, vargs);
-        })
-            .then((e) => {
-            if (!e.dirty) {
-                resolve({ color: e.color });
-            }
-            else {
-                vargs.objectId = e.objectId;
-                buffer.data = e.data;
-                return file_upload(user, id, buffer);
-            }
-        })
-            .then((e) => {
-            if (!e) {
-                reject();
-            }
-            else {
-                resolve({ color: vargs.color });
-            }
-        })
-            .catch(() => reject());
-    });
-}
-exports.protect = protect;
