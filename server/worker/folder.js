@@ -95,13 +95,55 @@ class CGEntry {
         });
     }
     // sync all contacts to IShieldoxContact
-    syncAB() {
+    syncAB(contacts) {
         return new Promise((resolve, reject) => {
-            return Promise.all(this.contacts.map((contact) => {
+            return Promise.all(contacts.map((contact) => {
                 return apishield.syncContactPromiseResolve(this.user, contact.emailAddress, contact.name);
             })).then((e) => {
                 resolve(e);
             });
+        });
+    }
+    toShieldPolicyScope(contacts) {
+        return new Promise((resolve, reject) => {
+            return this.syncAB(contacts).then((e) => {
+                const arr = [];
+                e.forEach((contact) => {
+                    if (contact.objectId != 'undefined') {
+                        arr.push({ objectId: contact.objectId, enabled: true,
+                            canedit: true // here call function to determine actual value 
+                        });
+                    }
+                });
+                const va = {
+                    groups: {},
+                    contacts: _.indexBy(arr, 'objectId')
+                };
+                resolve(va);
+            })
+                .catch((code) => resolve(undefined));
+        });
+    }
+    toShieldPolicyScopeInfo(contacts, fautoscope) {
+        return new Promise((resolve, reject) => {
+            return this.toShieldPolicyScope(contacts).then((e) => {
+                resolve({
+                    fautoscope: fautoscope,
+                    scope: e
+                });
+            }).catch(() => resolve(undefined));
+        });
+    }
+    toShieldFolderScopeRef(contacts, fautoscope, objectId) {
+        return new Promise((resolve, reject) => {
+            return this.toShieldPolicyScopeInfo(contacts, fautoscope)
+                .then((e) => {
+                resolve({
+                    objectId: objectId,
+                    scope: e
+                });
+            })
+                .catch(() => resolve(undefined));
         });
     }
 }
@@ -241,6 +283,16 @@ class CGFolderSynk extends CGEntry {
                 .catch(() => reject(500));
         });
     }
+    updateSharedContacts() {
+        return new Promise((resolve, reject) => {
+            return this.toShieldFolderScopeRef(this.contacts, false, this.shieldObj.objectId)
+                .then((e) => {
+                return apishield.scopeFolder(this.user, e);
+            })
+                .then((e) => resolve(e))
+                .catch((e) => reject(e));
+        });
+    }
     protect(color) {
         return new Promise((resolve, reject) => {
             return this.loadMetadata()
@@ -253,6 +305,7 @@ class CGFolderSynk extends CGEntry {
                     return this.syncFolder();
                 }
             })
+                .then((e) => { return this.updateSharedContacts(); })
                 .then((e) => { return apishield.colorFolder(this.user, { color: color, objectId: this.shieldObj.objectId }); })
                 .then((e) => {
                 resolve(e);
@@ -268,6 +321,16 @@ class CGFolderSynk extends CGEntry {
     }
 }
 class CGFileSynk extends CGEntry {
+    updateSharedContacts() {
+        return new Promise((resolve, reject) => {
+            return this.toShieldPolicyScope(this.privateContacts)
+                .then((e) => {
+                return apishield.scopeDocument(this.user, this.contentIoArgs.objectId, e);
+            })
+                .then((e) => resolve(e))
+                .catch((e) => reject(e));
+        });
+    }
     protect(color) {
         return new Promise((resolve, reject) => {
             return this.loadIoDataAndGetStatus()
@@ -291,6 +354,7 @@ class CGFileSynk extends CGEntry {
                     return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
                 }
             })
+                .then((e) => { return this.updateSharedContacts(); })
                 .then((e) => {
                 delete this.contentIoArgs.data;
                 delete this.contentIoArgs.protect;

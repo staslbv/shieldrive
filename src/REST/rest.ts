@@ -178,14 +178,12 @@ export class CRest{
         });
 
         this.app.get('/cloud/file/:id/protect/:color', CRest.requireAuthorization, (req,res)=>{
-             // gdrive.protect(req.user,req.params.id,parseInt(req.params.color))
              worker.protectFile(req.user,req.params.id,parseInt(req.params.color))
             .then((e)=>res.json(e))
             .catch((e : number)=>{return res.status(e).send();});
         });
 
         this.app.get('/cloud/folder/:id/protect/:color', CRest.requireAuthorization, (req,res)=>{
-             // gdrive.protect(req.user,req.params.id,parseInt(req.params.color))
              worker.protectFolder(req.user,req.params.id,parseInt(req.params.color))
             .then((e)=>res.json(e))
             .catch((e : number)=>{return res.status(e).send();});

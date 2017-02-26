@@ -11,6 +11,9 @@ exports.PID_TOKEN_TYPE = 'token_type';
 exports.PID_ACCESS_TOKEN = 'access_token';
 exports.PID_CLIENT_ID = 'client_id';
 exports.PID_UID = 'uid';
+// Worker
+exports.PID_JOB_ISRUNNING = 'jobisrunning';
+exports.PID_JOB_COMPLETE_STATE = 'jobcompletestate';
 // Precognition fields
 exports.PID_URL_HOST = 'host';
 exports.PID_URL_PATH = 'pathname';
@@ -23,4 +26,10 @@ var ACCOUNT_TYPE;
     ACCOUNT_TYPE[ACCOUNT_TYPE["DRIVE"] = 3] = "DRIVE";
 })(ACCOUNT_TYPE = exports.ACCOUNT_TYPE || (exports.ACCOUNT_TYPE = {}));
 ;
+var WORKER_COMPLETE_STATE;
+(function (WORKER_COMPLETE_STATE) {
+    WORKER_COMPLETE_STATE[WORKER_COMPLETE_STATE["STATE_PENDING"] = 0] = "STATE_PENDING";
+    WORKER_COMPLETE_STATE[WORKER_COMPLETE_STATE["STATUS_SUCCESS"] = 1] = "STATUS_SUCCESS";
+    WORKER_COMPLETE_STATE[WORKER_COMPLETE_STATE["STATUS_ERROR"] = 2] = "STATUS_ERROR";
+})(WORKER_COMPLETE_STATE = exports.WORKER_COMPLETE_STATE || (exports.WORKER_COMPLETE_STATE = {}));
 ;

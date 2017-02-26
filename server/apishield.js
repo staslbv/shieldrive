@@ -88,7 +88,7 @@ function syncContactPromiseResolve(user, email, name) {
         const params = { email: email, name: name, objectId: '' };
         return syncContact(user, params)
             .then((e) => resolve(e))
-            .catch(() => resolve(undefined));
+            .catch(() => resolve({ email: 'undefined', name: 'undefined', objectId: 'undefined' }));
     });
 }
 exports.syncContactPromiseResolve = syncContactPromiseResolve;
@@ -136,3 +136,52 @@ function options(user, args) {
     });
 }
 exports.options = options;
+function scopeFolder(user, scope) {
+    return new Promise((resolve, reject) => {
+        request({
+            url: helpacc_1.SHIELDOX_BASE_URL + '/account/scope',
+            method: 'PUT',
+            headers: {
+                "Authorization": 'Basic ' + user.token.access_token,
+                "sldx_accId": user.account.account.key,
+                "sldx_accType": 2
+            },
+            json: scope
+        }, (error, response, body) => {
+            if (SUCCEEDED(error, response)) {
+                resolve(body);
+            }
+            else {
+                resolve(500);
+            }
+        });
+    });
+}
+exports.scopeFolder = scopeFolder;
+function scopeDocument(user, objectId, scope) {
+    return new Promise((resolve, reject) => {
+        console.log('calling scope: ');
+        console.log(JSON.stringify(scope, null, 4));
+        request({
+            url: helpacc_1.SHIELDOX_BASE_URL + '/documents/scope',
+            method: 'POST',
+            headers: {
+                "Authorization": 'Basic ' + user.token.access_token,
+                "sldx_accId": user.account.account.key,
+                "sldx_accType": 2
+            },
+            json: {
+                objectId: objectId,
+                scope: scope
+            }
+        }, (error, response, body) => {
+            if (SUCCEEDED(error, response)) {
+                resolve(200);
+            }
+            else {
+                resolve(200);
+            }
+        });
+    });
+}
+exports.scopeDocument = scopeDocument;

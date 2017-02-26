@@ -1,18 +1,25 @@
 
-import * as FIELD  from '../constant';
-import * as gdrive from '../REST/gdrive';
-import * as apishield from '../apishield';
-import {ILoginInfo} from '../constant';
-import {IGFile}     from '../REST/gdrive';
-import {IGContact} from '../REST/gdrive';
-import {IShieldFolder} from '../apishield';
-import {IShieldContact} from '../apishield';
-import {IShieldPathPermissions} from '../apishield';
-import {IShieldPathPermission} from '../apishield';
-import {IProtectResult} from '../apishield';
-import {IShieldoxIOProtectArgs} from '../apishield';
-import {IContentBuffer} from '../constant';
-import {IShieldColorResponse} from '../apishield';
+import * as FIELD  from                '../constant';
+import * as gdrive from                '../REST/gdrive';
+import * as apishield from             '../apishield';
+import {ILoginInfo} from               '../constant';
+import {IGFile}     from               '../REST/gdrive';
+import {IGContact} from                '../REST/gdrive';
+import {IShieldFolder} from            '../apishield';
+import {IShieldContact} from           '../apishield';
+import {IShieldPathPermissions} from   '../apishield';
+import {IShieldPathPermission} from    '../apishield';
+import {IProtectResult} from           '../apishield';
+import {IShieldoxIOProtectArgs} from   '../apishield';
+import {IContentBuffer} from           '../constant';
+import {IShieldColorResponse} from     '../apishield';
+
+import {IShieldFolderScopeRef} from    '../apishield';
+import {IShieldPolicyScopeInfo} from   '../apishield';
+import {IShieldPolicyScope} from       '../apishield';
+import {IShieldMemberCredentials} from '../apishield';
+
+
 const _ = require ('underscore');
 
 const GDRIVE_FOLDER_MIME_TYPE: string = 'application/vnd.google-apps.folder';
@@ -32,6 +39,7 @@ class CGEntry{
                 _.isString(this.metadata.mimeType)); 
     }
     
+
     get isFolder(): boolean{
         return (this.metadata.mimeType == GDRIVE_FOLDER_MIME_TYPE);
     }
@@ -106,9 +114,9 @@ class CGEntry{
     }
 
     // sync all contacts to IShieldoxContact
-    protected syncAB(): Promise<IShieldContact[]>{
+    private syncAB(contacts: IGContact[]): Promise<IShieldContact[]>{
        return new Promise((resolve,reject)=>{
-           return Promise.all( this.contacts.map((contact)=>{
+           return Promise.all(contacts.map((contact)=>{
                return apishield.syncContactPromiseResolve(this.user,contact.emailAddress,contact.name)
            })).then((e)=>{ // got IShieldContact
               resolve(e);
@@ -116,7 +124,49 @@ class CGEntry{
        });
     }
 
-    
+    protected toShieldPolicyScope(contacts: IGContact[]) : Promise<IShieldPolicyScope>{
+        return new Promise((resolve,reject)=>{
+            return this.syncAB(contacts).then((e)=>{
+                const arr: any[] = [];
+                e.forEach((contact)=>{
+                     if (contact.objectId != 'undefined'){
+                         arr.push({ objectId: contact.objectId, enabled: true, 
+                             canedit: true // here call function to determine actual value 
+                         });
+                     }
+                });
+                const va : IShieldPolicyScope = {
+                     groups: {},
+                     contacts: _.indexBy(arr,'objectId')
+                };
+                resolve(va);
+            })
+            .catch((code)=>resolve(undefined));
+        });
+    }
+    protected toShieldPolicyScopeInfo( contacts: IGContact[], fautoscope: boolean ): Promise<IShieldPolicyScopeInfo>{
+        return new Promise((resolve,reject)=>{
+            return this.toShieldPolicyScope(contacts).then((e)=>{
+                resolve({
+                    fautoscope: fautoscope,
+                    scope: e
+                });
+            }).catch(()=>resolve(undefined));
+        });
+    }
+    protected toShieldFolderScopeRef(contacts: IGContact[], fautoscope: boolean, objectId: string): Promise<IShieldFolderScopeRef>{
+       return new Promise((resolve,reject)=>{
+           return this.toShieldPolicyScopeInfo(contacts,fautoscope)
+           .then((e)=>{
+               resolve({
+                   objectId: objectId,
+                   scope: e
+               });
+           })
+           .catch(()=>resolve(undefined));
+       });
+    }
+
 
     constructor (user: ILoginInfo, id: string, public metadata: IGFile){
         this.user        = user;
@@ -276,7 +326,18 @@ class CGFolderSynk extends CGEntry{
            .catch(()=>reject(500));
        });
     }
-
+    
+    private updateSharedContacts(): Promise<IShieldFolder>{
+        return new Promise((resolve,reject)=>{
+            return this.toShieldFolderScopeRef(this.contacts,false,this.shieldObj.objectId)
+            .then((e)=>{
+                return apishield.scopeFolder(this.user,e);
+            })
+            .then((e)=>resolve(e))
+            .catch((e)=>reject(e));
+        })
+    }
+    
     public protect(color: number) : Promise<IShieldFolder>{
         return new Promise((resolve,reject)=>{
             return this.loadMetadata()
@@ -288,6 +349,7 @@ class CGFolderSynk extends CGEntry{
                     return this.syncFolder();
                 }
             })
+            .then((e)=>{return this.updateSharedContacts()})
             .then((e)=>{return apishield.colorFolder(this.user,{color: color,objectId: this.shieldObj.objectId});})
             .then((e)=>{
                 resolve(e);
@@ -295,6 +357,7 @@ class CGFolderSynk extends CGEntry{
             .catch(()=>reject(500));
         });
     }
+
 
     constructor (user: ILoginInfo, entryId: string, metadata : IGFile){
         super(user,entryId,metadata);
@@ -310,6 +373,17 @@ class CGFileSynk extends CGEntry{
     contentBuffer:   IContentBuffer;
     contentIoArgs:   IShieldoxIOProtectArgs;
     
+    private updateSharedContacts(): Promise<number>{
+        return new Promise((resolve,reject)=>{
+            return this.toShieldPolicyScope(this.privateContacts)
+            .then((e)=>{
+                return apishield.scopeDocument(this.user, this.contentIoArgs.objectId, e);
+            })
+            .then((e)=>resolve(e))
+            .catch((e)=>reject(e));
+        })
+    }
+
     public protect(color: number) : Promise<IShieldoxIOProtectArgs>{
         return new Promise((resolve,reject)=>{
             return this.loadIoDataAndGetStatus()
@@ -331,6 +405,7 @@ class CGFileSynk extends CGEntry{
                    return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer); 
                 }
             })
+            .then((e)=>{return this.updateSharedContacts()})
             .then((e)=>{
                 delete this.contentIoArgs.data;
                 delete this.contentIoArgs.protect;

@@ -1,21 +1,26 @@
-export var PID_ID: string            = 'id';
-export var PID_EMAIL: string         = 'email';
-export var PID_TYPE: string          = 'type';
-export var PID_KEY: string           = 'key';
-export var PID_TOKEN_HASH: string    = 'token_hash';
-export var PID_USER_PKEY: string     = 'userId';
-export var PID_ACCOUNT_PKEY: string  = 'accountId';
-export var PID_OBJECTID: string      = 'objectId';
+export const PID_ID: string            = 'id';
+export const PID_EMAIL: string         = 'email';
+export const PID_TYPE: string          = 'type';
+export const PID_KEY: string           = 'key';
+export const PID_TOKEN_HASH: string    = 'token_hash';
+export const PID_USER_PKEY: string     = 'userId';
+export const PID_ACCOUNT_PKEY: string  = 'accountId';
+export const PID_OBJECTID: string      = 'objectId';
 
-export var PID_TOKEN_TYPE: string    = 'token_type';
-export var PID_ACCESS_TOKEN: string  = 'access_token';
-export var PID_CLIENT_ID: string     = 'client_id';
-export var PID_UID: string           = 'uid';
+export const PID_TOKEN_TYPE: string    = 'token_type';
+export const PID_ACCESS_TOKEN: string  = 'access_token';
+export const PID_CLIENT_ID: string     = 'client_id';
+export const PID_UID: string           = 'uid';
 
+// Worker
+export const PID_JOB_ISRUNNING: string = 'jobisrunning';
+export const PID_JOB_COMPLETE_STATE: string    = 'jobcompletestate';
 // Precognition fields
-export var PID_URL_HOST: string      = 'host';
-export var PID_URL_PATH: string      = 'pathname';
-export var PID_URL_HOST_PKEY: string = 'precoHostId';
+export const PID_URL_HOST: string      = 'host';
+export const PID_URL_PATH: string      = 'pathname';
+export const PID_URL_HOST_PKEY: string = 'precoHostId';
+
+
 
 export enum ACCOUNT_TYPE {
     SYSTEM,
@@ -23,6 +28,12 @@ export enum ACCOUNT_TYPE {
     DROPBOX,
     DRIVE
 };
+
+export enum WORKER_COMPLETE_STATE{
+    STATE_PENDING,
+    STATUS_SUCCESS,
+    STATUS_ERROR
+}
 
 export interface IUser{
     id:        number;
@@ -71,7 +82,11 @@ export interface IContentBuffer{
     data: string;
 }
 
-
+export interface IFolderWorkerStatus
+{
+    accountId: number; // account primary Key
+    key:       string; // 
+}
 
 
 

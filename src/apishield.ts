@@ -68,6 +68,26 @@ export interface IProtectResult{
     color: number;
 }
 
+export interface IShieldFolderScopeRef{
+    objectId : string;
+    scope: IShieldPolicyScopeInfo;
+}
+
+
+export interface IShieldPolicyScopeInfo {
+    fautoscope: boolean;
+    scope:      IShieldPolicyScope; 
+}
+
+export interface IShieldPolicyScope{
+    groups:   any;
+    contacts: any;
+}
+
+export interface IShieldMemberCredentials{
+    enabled: boolean;
+    canedit: boolean;
+}
 
 export function SUCCEEDED(error: any, response: any): boolean {
     if (null == response || typeof response == 'undefined') {
@@ -153,7 +173,7 @@ export function syncContactPromiseResolve(user: ILoginInfo,email: string, name: 
         const params:  IShieldContact  = {email: email,  name: name, objectId: ''};
         return syncContact(user,params)
         .then((e)=>resolve(e))
-        .catch(()=>resolve(undefined));
+        .catch(()=>resolve({email: 'undefined', name: 'undefined', objectId: 'undefined'}));
     });
 }
 
@@ -200,3 +220,53 @@ export function options(user: ILoginInfo, args: any): Promise<IShieldPathPermiss
         });
     });
 }
+
+export function scopeFolder(user: ILoginInfo, scope: IShieldFolderScopeRef): Promise<IShieldFolder>{
+    return new Promise((resolve,reject)=>{
+        request({
+             url: SHIELDOX_BASE_URL + '/account/scope', 
+             method: 'PUT',
+             headers: {
+                 "Authorization": 'Basic ' + user.token.access_token,
+                 "sldx_accId":  user.account.account.key,
+                 "sldx_accType": 2
+                },
+             json: scope
+        },(error: any, response: any, body: IShieldFolder)=>{
+            if(SUCCEEDED(error,response)){
+                resolve(body);
+            }else{
+                resolve(500);
+            }
+        });
+    });
+}
+
+export function scopeDocument(user: ILoginInfo, objectId: string, scope: IShieldPolicyScope): Promise<number>{
+    return new Promise((resolve,reject)=>{
+        console.log('calling scope: ');
+        console.log(JSON.stringify(scope,null,4));
+        request({
+             url: SHIELDOX_BASE_URL + '/documents/scope', 
+             method: 'POST',
+             headers: {
+                 "Authorization": 'Basic ' + user.token.access_token,
+                 "sldx_accId":  user.account.account.key,
+                 "sldx_accType": 2
+                },
+             json: {
+                 objectId: objectId,
+                 scope: scope
+             }
+        },(error: any, response: any, body: number)=>{
+            if(SUCCEEDED(error,response)){
+                resolve(200);
+            }else{
+                
+                resolve(200);
+            }
+        });
+    });
+}
+
+
