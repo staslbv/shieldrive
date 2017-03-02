@@ -2,6 +2,7 @@ const  request = require('request');
 const  _ = require('underscore');
 import * as APISHIELD from '../apishield';
 import * as FIELD from   '../constant';
+import {ICountArg} from '../constant';
 import {ILoginInfo} from '../constant';
 import {IContentBuffer} from '../constant';
 import {IProtectResult} from '../apishield';
@@ -49,19 +50,23 @@ export interface IGPagedFilesResponse{
 
 const GOOGLE_DRIVE_URL : string = 'https://www.googleapis.com';
 
-function SUCCEEDED(error: any, response: any): boolean {
-    if (null == response || typeof response == 'undefined') {
-        console.log('request error: NO RESPONSE');
-        return false;
-    }
-    var code = response.statusCode;
-    if (typeof code == 'number') {
-        
-        console.log('error code: ' + code);
+function SUCCEEDED(url: string, error: any, response: any, body: any): boolean{
+    const code: number = SUCCESS(url, error,response,body);
+    
+    return (code >= 200 && code < 300);
+}
 
-        return ((code >= 200) && (code < 300));
+function SUCCESS(url: string, error: any, response: any, body: any): number {
+    var code: number = 500;
+    if (null == response || typeof response == 'undefined') {
+         console.log('request error: NO RESPONSE');
+    }else{
+         code = response.statusCode;
     }
-    return false;
+
+    console.log('[' + code + '] : ' + url);
+    
+    return code;
 }
 
 function getAuthHeader(user: ILoginInfo) : string{
@@ -115,7 +120,8 @@ function rest_list_files_scan(user: ILoginInfo, flagFolder: boolean, buffer: IGF
             },
             json: true
        }, (error: any, response: any, body: IGPagedFilesResponse)=>{
-           if (SUCCEEDED(error,response) && body && body.items){
+
+           if (SUCCEEDED('rest_list_files_scan',error,response, body) && body && body.items){
               
                buffer.push(...body.items);
                if (body.items.length == 0 || typeof body.nextPageToken != 'string' || body.nextPageToken.length == 0 ){     
@@ -138,7 +144,8 @@ function rest_list_object_folder(user: ILoginInfo , buffer: IGFile[],  rid: stri
            method: 'GET',
            headers: { Authorization: getAuthHeader(user)}, json: true
        }, (error: any, response: any, body: IGPagedFilesResponse)=>{
-           if (SUCCEEDED(error,response) && body && body.items){
+           
+           if (SUCCEEDED('rest_list_object_folder',error,response, body) && body && body.items){
                buffer.push(...body.items);
                if (body.items.length == 0 || typeof body.nextPageToken != 'string' || body.nextPageToken.length == 0 ){     
                    resolve(body);
@@ -152,7 +159,7 @@ function rest_list_object_folder(user: ILoginInfo , buffer: IGFile[],  rid: stri
    });
 }
 
-function rest_list_files_metadata(user: ILoginInfo, item: IGFile): Promise<IGFile>{
+function rest_list_files_metadata(user: ILoginInfo, item: IGFile, pretry? : ICountArg): Promise<IGFile>{
     return new Promise((resolve,reject)=>{
         var result: any = undefined;
         var url = '/drive/v2/files/' + item.id;
@@ -163,55 +170,118 @@ function rest_list_files_metadata(user: ILoginInfo, item: IGFile): Promise<IGFil
             headers: {Authorization: getAuthHeader(user)},
             json:true},
         (error: any, response: any, body: IGFile)=>{
-            if (SUCCEEDED(error,response)){
-                result = body;
+            var statusCode = SUCCESS('rest_list_files_metadata', error,response,body);
+            if (statusCode >= 200 && statusCode < 300){
+                if (pretry){ 
+                    pretry.completed = true; 
+                    pretry.body      = body 
+                }
+                resolve(body);
+            }else if (statusCode == 500 || statusCode == 403){
+                if (!pretry) { pretry = new ICountArg();}
+                if (pretry.count < 0) {
+                    if (pretry.completed){
+                        resolve(pretry.body);
+                    }else{
+                        reject(statusCode);
+                    }
+                } else {
+                    return new Promise((a,b)=>{
+                        setTimeout(()=>{
+                            a((pretry.count-= 1));
+                        },pretry.sleep);
+                    }).then(()=> resolve(rest_list_files_metadata(user,item,pretry)));
+                }
+            }else{
+               reject(statusCode);
             }
-            resolve(result);
         });
     });
 }
 
-function rest_file_download(user: ILoginInfo, id: string) : Promise<IContentBuffer>{
+function rest_file_download(user: ILoginInfo, id: string, pretry? : ICountArg) : Promise<IContentBuffer>{
     return new Promise((resolve,reject)=>{
          request({
             url: GOOGLE_DRIVE_URL + '/drive/v3/files/' + id + '?alt=media', 
             method: 'GET',
             headers: {Authorization: getAuthHeader(user)},
             json:false,
+            timeout:  300000,
             encoding: null},
         (error: any, response: any, body: Buffer)=>{
-           // response.headers['content-type']
-            if (!SUCCEEDED(error, response)){
-                resolve(undefined);
+             var statusCode = SUCCESS('rest_file_download', error,response,body);
+            if (statusCode >= 200 && statusCode < 300){
+                var result  = {id: id, contentType: response.headers['content-type'], data: body.toString('base64')};
+                if (pretry){ 
+                    pretry.completed = true;
+                    pretry.body      = result; 
+                }
+                resolve(result);
+            }else if (statusCode == 500 || statusCode == 403){
+                if (!pretry) { pretry = new ICountArg();}
+                if (pretry.count < 0) {
+                    if (pretry.completed){
+                        resolve(pretry.body);
+                    }else{
+                        reject(statusCode);
+                    }
+                } else {
+                    return new Promise((a,b)=>{
+                        setTimeout(()=>{
+                            a((pretry.count-= 1));
+                        },pretry.sleep);
+                    }).then(()=> resolve(rest_file_download(user,id,pretry)));
+                }
             }else{
-                resolve({id: id, contentType: response.headers['content-type'], data: body.toString('base64')});
+              reject();
             }
         });
     });
 } 
 
-function rest_file_upload(user: ILoginInfo, content: IContentBuffer): Promise<boolean>{
+function rest_file_upload(user: ILoginInfo, content: IContentBuffer, pretry? : ICountArg): Promise<boolean>{
     return new Promise((resolve,reject)=>{
         const url: string = '/upload/drive/v2/files/' + content.id + '?uploadType=media&newRevision=false&updateViewedDate=false';
         console.log(url + ' ' + content.data.length);
         request({
-             url: GOOGLE_DRIVE_URL + url, 
-             method: 'PUT',
-             headers: {"Authorization": getAuthHeader(user), "Content-Type": content.contentType},
-             json: false,
+             url:      GOOGLE_DRIVE_URL + url, 
+             method:  'PUT',
+             headers:  {"Authorization": getAuthHeader(user), "Content-Type": content.contentType},
+             json:     false,
              encoding: null,
-             body: new Buffer(content.data,'base64')
+             timeout:  300000,
+             body:     new Buffer(content.data,'base64')
         },(error: any, response: any, body: IGFile)=>{
-            if(SUCCEEDED(error,response)){
+            var statusCode = SUCCESS('rest_file_upload', error,response,body);
+            if (statusCode >= 200 && statusCode < 300){
+                if (pretry){ 
+                    pretry.completed = true; 
+                    pretry.body      = true; 
+                }
                 resolve(true);
+            }else if (statusCode == 500 || statusCode == 403){
+                if (!pretry) { pretry = new ICountArg();}
+                if (pretry.count < 0) {
+                    if (pretry.completed){
+                        resolve(true);
+                    }else{
+                        reject(statusCode);
+                    }
+                } else {
+                    return new Promise((a,b)=>{
+                        setTimeout(()=>{
+                            a((pretry.count-= 1));
+                        },pretry.sleep);
+                    }).then(()=> resolve(rest_file_upload(user,content,pretry)));
+                }
             }else{
-                resolve(false);
+               reject();
             }
         });
     });
 }
 
-export function rest_file_contacts(user: ILoginInfo, id: string): Promise<IGContact[]>{
+export function rest_file_contacts(user: ILoginInfo, id: string, pretry? : ICountArg): Promise<IGContact[]>{
     return new Promise((resolve,reject)=>{
         const url: string = '/drive/v2/files/' + id + '/permissions'
         request({
@@ -220,24 +290,43 @@ export function rest_file_contacts(user: ILoginInfo, id: string): Promise<IGCont
              headers: {"Authorization": getAuthHeader(user)},
              json: true
         },(error: any, response: any, body: IUsersPermissions)=>{
-            if(SUCCEEDED(error,response)){
-                const buffer: IGContact[] = [];
-                body.items.forEach((item)=>{
+            const buffer: IGContact[] = [];
+            var statusCode = SUCCESS('rest_file_contacts', error,response,body);
+             if (statusCode >= 200 && statusCode < 300){
+                 body.items.forEach((item)=>{
                    if (_.isString(item.emailAddress)){
                        item.emailAddress = item.emailAddress.toLowerCase().trim();
-                       if (item.emailAddress.length > 0)
-                       {
+                       if (item.emailAddress.length > 0){
                            buffer.push({
                              emailAddress: item.emailAddress,
-                             name: item.name,
-                             role: item.role
+                             name:         item.name,
+                             role:         item.role
                            });
                        }
                    }
                 });
+                if (pretry){ 
+                    pretry.completed = true; 
+                    pretry.body      = buffer ; 
+                }
                 resolve(buffer);
+            }else if (statusCode == 500 || statusCode == 403){
+                if (!pretry) { pretry = new ICountArg();}
+                if (pretry.count < 0) {
+                    if (pretry.completed){
+                        resolve(pretry.body);
+                    }else{
+                        reject(statusCode);
+                    }
+                } else {
+                    return new Promise((a,b)=>{
+                        setTimeout(()=>{
+                            a((pretry.count-= 1));
+                        },pretry.sleep);
+                    }).then(()=> resolve(rest_file_contacts(user,id,pretry)));
+                }
             }else{
-                reject();
+              reject();
             }
         });
     });

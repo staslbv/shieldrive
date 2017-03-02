@@ -191,7 +191,13 @@ export function lock(user: ILoginInfo, args: IShieldoxIOProtectArgs): Promise<IS
 
         },(error: any, response: any, body: IShieldoxIOProtectArgs)=>{
             if(SUCCEEDED(error,response)){
-                resolve(body);
+                if (!body || typeof body.objectId != 'string' || body.objectId.length == 0 ){
+                    console.log('ITEM LOCK FAILED');
+                    reject(500);
+                }else{
+                    console.log('ITEM LOCK SUCCEEDED');
+                    resolve(body);
+                }
             }else{
                 reject(500);
             }
@@ -244,8 +250,6 @@ export function scopeFolder(user: ILoginInfo, scope: IShieldFolderScopeRef): Pro
 
 export function scopeDocument(user: ILoginInfo, objectId: string, scope: IShieldPolicyScope): Promise<number>{
     return new Promise((resolve,reject)=>{
-        console.log('calling scope: ');
-        console.log(JSON.stringify(scope,null,4));
         request({
              url: SHIELDOX_BASE_URL + '/documents/scope', 
              method: 'POST',

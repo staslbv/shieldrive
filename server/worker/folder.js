@@ -1,11 +1,32 @@
 "use strict";
 const gdrive = require("../REST/gdrive");
 const apishield = require("../apishield");
+const bkworker_1 = require("./bkworker");
+const rest_1 = require("../REST/rest");
 const _ = require('underscore');
 const GDRIVE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+//
+const spawn = require('threads').spawn;
+function cancelationPending(context) {
+    return new Promise((resolve, reject) => {
+        if (!context || typeof context == 'undefined') {
+            resolve(false);
+        }
+        else {
+            return context.loadJobObject()
+                .then((e) => {
+                resolve(e.fcancelPending);
+            })
+                .catch(() => {
+                resolve(false);
+            });
+        }
+    });
+}
 class CGEntry {
     constructor(user, id, metadata) {
         this.metadata = metadata;
+        this.FLAG_CONTACTS_RESOLVED = false;
         this.user = user;
         this.entryId = id;
         this.permissions = undefined;
@@ -38,9 +59,14 @@ class CGEntry {
     // load contacts: emailAddress, role, name
     resolve_loadPermissions() {
         return new Promise((resolve, reject) => {
-            return gdrive.rest_file_contacts(this.user, this.entryId)
-                .then((e) => resolve((this.permissions = e)))
-                .catch(() => reject());
+            if (typeof this.permissions == 'object') {
+                resolve(this.permissions);
+            }
+            else {
+                return gdrive.rest_file_contacts(this.user, this.entryId)
+                    .then((e) => { resolve((this.permissions = e)); })
+                    .catch(() => reject());
+            }
         });
     }
     // iterate object permissions 
@@ -81,7 +107,10 @@ class CGEntry {
             else {
                 return this.resolve_loadMetadata()
                     .then((e) => resolve(true))
-                    .catch(() => reject());
+                    .catch(() => {
+                    console.log('ERROR: UNABLE TO RESOLVE OBJECT METADATA');
+                    reject();
+                });
             }
         });
     }
@@ -110,7 +139,8 @@ class CGEntry {
                 const arr = [];
                 e.forEach((contact) => {
                     if (contact.objectId != 'undefined') {
-                        arr.push({ objectId: contact.objectId, enabled: true,
+                        arr.push({
+                            objectId: contact.objectId, enabled: true,
                             canedit: true // here call function to determine actual value 
                         });
                     }
@@ -120,8 +150,7 @@ class CGEntry {
                     contacts: _.indexBy(arr, 'objectId')
                 };
                 resolve(va);
-            })
-                .catch((code) => resolve(undefined));
+            }).catch((code) => resolve(undefined));
         });
     }
     toShieldPolicyScopeInfo(contacts, fautoscope) {
@@ -147,6 +176,7 @@ class CGEntry {
         });
     }
 }
+exports.CGEntry = CGEntry;
 class CGFolderSynk extends CGEntry {
     // synchronize current folder and get objectId
     syncFolder() {
@@ -156,7 +186,14 @@ class CGFolderSynk extends CGEntry {
                 .catch(() => reject());
         });
     }
-    promise_loadView() {
+    promise_loadView_All(recursive) {
+        return new Promise((resolve, reject) => {
+            return this.promise_loadView(recursive)
+                .then((e) => resolve(e))
+                .catch(() => resolve(undefined));
+        });
+    }
+    promise_loadView(recursive) {
         return new Promise((resolve, reject) => {
             return this.loadMetadata() // got permissions and shared list
                 .then((e) => {
@@ -174,24 +211,24 @@ class CGFolderSynk extends CGEntry {
                         }
                     });
                 });
-                return this.promise_loadViewChildren();
+                return this.promise_loadViewChildren(recursive);
             })
-                .then((e) => { return this.promise_loadViewShieldPermissions(); })
+                .then((e) => { return this.promise_loadViewShieldPermissions(recursive); })
                 .then((e) => resolve(e))
                 .catch(() => reject());
         });
     }
-    promise_loadViewChildren() {
+    promise_loadViewChildren(recursive) {
         return new Promise((resolve, reject) => {
-            return this.promise_loadViewChildren_Folders()
+            return this.promise_loadViewChildren_Folders(recursive)
                 .then(() => {
-                return this.promise_loadViewChildren_Files();
+                return this.promise_loadViewChildren_Files(recursive);
             })
                 .then(() => resolve(true))
                 .catch(() => reject());
         });
     }
-    promise_loadViewChildren_Files() {
+    promise_loadViewChildren_Files(recursive) {
         return new Promise((resolve, reject) => {
             return Promise.all(this.files.map((file) => {
                 return file.loadMetadata();
@@ -200,16 +237,26 @@ class CGFolderSynk extends CGEntry {
             }).catch(() => reject());
         });
     }
-    promise_loadViewChildren_Folders() {
+    promise_loadViewChildren_Folders(recursive) {
         return new Promise((resolve, reject) => {
             return Promise.all(this.folders.map((folder) => {
                 return folder.loadMetadata();
             })).then(() => {
-                resolve(true);
+                if (!recursive) {
+                    resolve(true);
+                }
+                else {
+                    return Promise.all(this.folders.map((folder) => {
+                        return folder.promise_loadView_All(recursive);
+                    })).then(() => {
+                        console.log('>>>>>>>>>>>>>>>>>>>>>>  RESOLVED RECURSIVE');
+                        resolve(true);
+                    });
+                }
             }).catch(() => reject());
         });
     }
-    promise_loadViewShieldPermissions() {
+    promise_loadViewShieldPermissions(recursive) {
         return new Promise((resolve, reject) => {
             const pFolders = [];
             const pDocuments = [];
@@ -295,6 +342,8 @@ class CGFolderSynk extends CGEntry {
     }
     protect(color) {
         return new Promise((resolve, reject) => {
+            var context;
+            var cancelation_pending = false;
             return this.loadMetadata()
                 .then((e) => { return this.resolveRW(); })
                 .then((e) => {
@@ -308,9 +357,99 @@ class CGFolderSynk extends CGEntry {
                 .then((e) => { return this.updateSharedContacts(); })
                 .then((e) => { return apishield.colorFolder(this.user, { color: color, objectId: this.shieldObj.objectId }); })
                 .then((e) => {
-                resolve(e);
+                const dirty = (this.shieldObj.color > 0 && e.color == 0) || (this.shieldObj.color == 0 && e.color > 0);
+                this.shieldObj = e;
+                e['dirty'] = dirty;
+                if (dirty) {
+                    return (context = new bkworker_1.BackgndWorker(rest_1.CRest.pData, this.user, this.entryId, e.color)).getContext();
+                }
+                else {
+                    resolve(e);
+                }
+            })
+                .then((e) => {
+                if (e.context.frunning) {
+                    console.log('>>>>>>>>>>>>>>>>>>>>>      CANCELING CURRENT SCAN');
+                    return context.cancelScan(this.shieldObj.color > 0);
+                }
+                else if (e.enable) {
+                    console.log('>>>>>>>>>>>>>>>>>>>>       BEGINNING NEW SCAN');
+                    return context.beginScan();
+                }
+                else {
+                    console.log('>>>>>>>>>>>>>>>>>>>>       NO ACTION TAKEN');
+                    resolve(e);
+                }
+            })
+                .then((e) => {
+                if (!context.statusObj.fcancelPending) {
+                    this.batchSpawn(this.shieldObj, context);
+                }
+                else {
+                    console.log('>>>>>>>>>>>>>>>>>>>>       CANCELATION PENDING ...');
+                }
+                resolve(this.shieldObj);
             })
                 .catch(() => reject(500));
+        });
+    }
+    batchSpawn(folder, context) {
+        const thread = spawn("worker//process.js");
+        thread.send({
+            user: this.user,
+            entryId: this.entryId,
+            metadata: this.metadata,
+            folder: folder,
+            context: context.statusObj
+        })
+            .on('message', function (response) {
+            console.log('THREAD COMPLETED !');
+            thread.kill();
+        })
+            .on('error', (error) => {
+            console.log('THREAD ERROR ! : ' + error);
+        })
+            .on('exit', () => {
+            console.log('THREAD EXIT !');
+        });
+    }
+    batchProtect(folder, context) {
+        this.folders = [];
+        this.files = [];
+        console.log('batchProtecting ....');
+        return new Promise((resolve, reject) => {
+            return this.promise_loadView(false)
+                .then((e) => {
+                return context.beginScan()
+                    .then(() => {
+                    Promise.all(this.files.map((item) => {
+                        return item.protect_promise(folder.color, false, context);
+                    })).then((e) => {
+                        console.log('PROMISSES RESOLVED:' + e.length);
+                        return cancelationPending(context).then((canceled) => {
+                            if (canceled) {
+                                return context.beginScan().then((e) => {
+                                    return this.syncFolder().then((e) => {
+                                        resolve(this.batchProtect((this.shieldObj = e), context));
+                                    }).catch((e) => {
+                                        reject();
+                                    });
+                                });
+                            }
+                            else {
+                                return context.completeScan().then((e) => {
+                                    console.log('>>>>>>>>>>>>>>>>>>>>>  --SCAN--COMPLETED--');
+                                    resolve();
+                                });
+                            }
+                        });
+                    });
+                }).catch((BEGIN_SCAN_ERROR_CODE) => {
+                    reject();
+                });
+            }).catch((e) => {
+                reject();
+            });
         });
     }
     constructor(user, entryId, metadata) {
@@ -320,6 +459,7 @@ class CGFolderSynk extends CGEntry {
         this.files = [];
     }
 }
+exports.CGFolderSynk = CGFolderSynk;
 class CGFileSynk extends CGEntry {
     updateSharedContacts() {
         return new Promise((resolve, reject) => {
@@ -331,36 +471,66 @@ class CGFileSynk extends CGEntry {
                 .catch((e) => reject(e));
         });
     }
-    protect(color) {
+    protect_promise(color, force, context) {
         return new Promise((resolve, reject) => {
+            try {
+                return this.protect(color, force, context)
+                    .then((e) => resolve(e))
+                    .catch(() => resolve(undefined));
+            }
+            catch (Error) {
+                console.log('ERROR: ' + Error);
+                resolve(undefined);
+            }
+        });
+    }
+    protect(color, force, context) {
+        return new Promise((resolve, reject) => {
+            console.log('PROTECTING: ' + this.metadata.title);
             return this.loadIoDataAndGetStatus()
-                .then((code) => {
-                if (this.parent.shieldObj.color > 0 && color == 0) {
-                    reject(409); // can not unprotect file in folder ...
+                .then((code) => { return cancelationPending(context); })
+                .then((canceled) => {
+                if ((canceled) || (this.parent.shieldObj.color > 0 && color == 0) || !this.canRW) {
+                    console.log('PROTECT REJECTED: REASON #1');
+                    reject(409); // can not unprotect file in folder or operation canceled...
                 }
                 else {
                     this.contentIoArgs.color = color;
-                    this.contentIoArgs.protect = true;
+                    this.contentIoArgs.protect = (force || color == 0 || this.parent.shieldObj.color == 0);
+                    console.log('Calling lock ...');
                     return apishield.lock(this.user, this.contentIoArgs);
                 }
             })
                 .then((e) => {
                 this.contentBuffer.data = e.data;
                 this.contentIoArgs = e;
-                if (!e.dirty) {
-                    return new Promise((resolve, reject) => { resolve(true); });
+                return cancelationPending(context);
+            })
+                .then((canceled) => {
+                if (canceled) {
+                    console.log('PROTECT REJECTED: REASON #2');
+                    reject(409);
                 }
                 else {
-                    return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
+                    if (!this.contentIoArgs.dirty) {
+                        resolve(this.contentIoArgs);
+                    }
+                    else {
+                        console.log('Calling upload ...');
+                        return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
+                    }
                 }
             })
-                .then((e) => { return this.updateSharedContacts(); })
                 .then((e) => {
+                console.log('PROTECT ACCEPTED, Notifieng: ' + this.metadata.title);
                 delete this.contentIoArgs.data;
                 delete this.contentIoArgs.protect;
                 resolve(this.contentIoArgs);
             })
-                .catch((code) => reject(code));
+                .catch((code) => {
+                console.log('PROTECT REJECTED: REASON#4 ' + this.metadata.title);
+                reject(code);
+            });
         });
     }
     colorUiLoad() {
@@ -417,6 +587,7 @@ class CGFileSynk extends CGEntry {
                 .then((e) => { return this.loadObjectWithContacts(); })
                 .then((e) => {
                 if (typeof this.role == 'undefined') {
+                    console.log('REJECTED loadIoDataAndGetStatus:  ROLE IS NULL');
                     reject(401);
                 }
                 else {
@@ -429,27 +600,61 @@ class CGFileSynk extends CGEntry {
             })
                 .then((e) => {
                 this.contentIoArgs = this.getIoArgs(this.parent.shieldObj.objectId, this.contentBuffer.data);
+                console.log('RESOLVED loadIoDataAndGetStatus');
                 resolve(200);
             })
-                .catch(() => reject(500));
+                .catch(() => {
+                console.log('REJECTED loadIoDataAndGetStatus:  REASON UNKNOWN');
+                reject(500);
+            });
         });
     }
+    /*
+        private loadObjectWithContacts(): Promise<boolean> {
+            return new Promise((resolve, reject) => {
+                let parent = this.parent;
+                if ((!parent) || (typeof parent == 'undefined')) {
+                     parent      = new CGFolderSynk(this.user, this.entryId, undefined);
+                     this.parent = parent;
+                 }
+                return parent.loadMetadata()
+                    .then((e) => { return parent.resolveRW(); })
+                    .then((e) => { return this.resolveRW(); })
+                    .then((e) => {
+                        this.parent = parent;
+                        this.privateContacts = this.calcPrivateContacts();
+                        resolve(true);
+                    })
+                    .catch(() => reject());
+            });
+        }
+    
+        */
     loadObjectWithContacts() {
         return new Promise((resolve, reject) => {
             let parent = this.parent;
-            if (!parent) {
+            if ((!parent) || (typeof parent == 'undefined')) {
                 parent = new CGFolderSynk(this.user, this.entryId, undefined);
-            }
-            return parent.loadMetadata()
-                .then((e) => { return parent.resolveRW(); })
-                .then((e) => { return this.resolveRW(); })
-                .then((e) => {
                 this.parent = parent;
-                this.privateContacts = this.calcPrivateContacts();
-                console.log('number private contacts: ' + this.privateContacts.length);
-                resolve(true);
-            })
-                .catch(() => reject());
+            }
+            return parent.loadMetadata().then((parentMetadataResolved) => {
+                return parent.resolveRW().then((parentRWResolved) => {
+                    return this.resolveRW().then((docRwResolved) => {
+                        console.log('RESOLVED: loadObjectWithContacts');
+                        this.privateContacts = this.calcPrivateContacts();
+                        resolve(true);
+                    }, (docRwRejected) => {
+                        console.log('OWNER RESOLVE RW FAILED');
+                        reject();
+                    });
+                }, (parentRWFailed) => {
+                    console.log('PARENT RESOLE RW FAILED');
+                    reject();
+                });
+            }, (parentMetadataFailed) => {
+                console.log('PARENT METADATA FAILED');
+                reject();
+            });
         });
     }
     calcPrivateContacts() {
@@ -480,10 +685,11 @@ class CGFileSynk extends CGEntry {
         this.parent = parent;
     }
 }
+exports.CGFileSynk = CGFileSynk;
 function getViewOptions(user, entryId) {
     return new Promise((resolve, reject) => {
         const sync = new CGFolderSynk(user, entryId, undefined);
-        return sync.promise_loadView()
+        return sync.promise_loadView(false)
             .then((e) => resolve(e))
             .catch(() => reject());
     });
@@ -491,7 +697,7 @@ function getViewOptions(user, entryId) {
 exports.getViewOptions = getViewOptions;
 function protectFile(user, entryId, color) {
     return new Promise((resolve, reject) => {
-        return (new CGFileSynk(user, entryId, undefined, undefined)).protect(color)
+        return (new CGFileSynk(user, entryId, undefined, undefined)).protect(color, true, undefined)
             .then((e) => resolve(e), (code) => reject(code));
     });
 }
@@ -517,3 +723,12 @@ function colorUiLoadFolder(user, entryId) {
     });
 }
 exports.colorUiLoadFolder = colorUiLoadFolder;
+function colorFolderGetContext(user, entryId, color) {
+    return new Promise((resolve, reject) => {
+        var context = new bkworker_1.BackgndWorker(rest_1.CRest.pData, user, entryId, color);
+        return context.getContext()
+            .then((e) => resolve(e))
+            .catch((e) => reject(e));
+    });
+}
+exports.colorFolderGetContext = colorFolderGetContext;

@@ -77,7 +77,6 @@ function download(body) {
                 reject();
             }
             else {
-                console.log('downloaded .....');
                 resolve(z.toString('base64'));
             }
         });

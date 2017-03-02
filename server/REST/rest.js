@@ -158,6 +158,12 @@ class CRest {
                 .then((e) => res.json(e))
                 .catch((e) => { return res.status(e).send(); });
         });
+        this.app.get('/cloud/folder/:id/context/:color', CRest.requireAuthorization, (req, res) => {
+            console.log('calculating context ...');
+            worker.colorFolderGetContext(req.user, req.params.id, parseInt(req.params.color))
+                .then((e) => res.json(e))
+                .catch((e) => { return res.status(e).send(); });
+        });
         this.app.get('/oauth2callback', (req, res) => {
             return res.status(200).send();
         });

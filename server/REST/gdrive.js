@@ -1,23 +1,27 @@
 "use strict";
 const request = require('request');
 const _ = require('underscore');
+const constant_1 = require("../constant");
 ;
 ;
 ;
 exports.IGFile_FIELD = 'id,title,fileExtension,fileSize,owners,parents';
 ;
 const GOOGLE_DRIVE_URL = 'https://www.googleapis.com';
-function SUCCEEDED(error, response) {
+function SUCCEEDED(url, error, response, body) {
+    const code = SUCCESS(url, error, response, body);
+    return (code >= 200 && code < 300);
+}
+function SUCCESS(url, error, response, body) {
+    var code = 500;
     if (null == response || typeof response == 'undefined') {
         console.log('request error: NO RESPONSE');
-        return false;
     }
-    var code = response.statusCode;
-    if (typeof code == 'number') {
-        console.log('error code: ' + code);
-        return ((code >= 200) && (code < 300));
+    else {
+        code = response.statusCode;
     }
-    return false;
+    console.log('[' + code + '] : ' + url);
+    return code;
 }
 function getAuthHeader(user) {
     return user.account.token.token_type + ' ' + user.account.token.access_token;
@@ -67,7 +71,7 @@ function rest_list_files_scan(user, flagFolder, buffer, title, token) {
             },
             json: true
         }, (error, response, body) => {
-            if (SUCCEEDED(error, response) && body && body.items) {
+            if (SUCCEEDED('rest_list_files_scan', error, response, body) && body && body.items) {
                 buffer.push(...body.items);
                 if (body.items.length == 0 || typeof body.nextPageToken != 'string' || body.nextPageToken.length == 0) {
                     resolve(body);
@@ -90,7 +94,7 @@ function rest_list_object_folder(user, buffer, rid, token) {
             method: 'GET',
             headers: { Authorization: getAuthHeader(user) }, json: true
         }, (error, response, body) => {
-            if (SUCCEEDED(error, response) && body && body.items) {
+            if (SUCCEEDED('rest_list_object_folder', error, response, body) && body && body.items) {
                 buffer.push(...body.items);
                 if (body.items.length == 0 || typeof body.nextPageToken != 'string' || body.nextPageToken.length == 0) {
                     resolve(body);
@@ -105,7 +109,7 @@ function rest_list_object_folder(user, buffer, rid, token) {
         });
     });
 }
-function rest_list_files_metadata(user, item) {
+function rest_list_files_metadata(user, item, pretry) {
     return new Promise((resolve, reject) => {
         var result = undefined;
         var url = '/drive/v2/files/' + item.id;
@@ -116,33 +120,86 @@ function rest_list_files_metadata(user, item) {
             headers: { Authorization: getAuthHeader(user) },
             json: true
         }, (error, response, body) => {
-            if (SUCCEEDED(error, response)) {
-                result = body;
+            var statusCode = SUCCESS('rest_list_files_metadata', error, response, body);
+            if (statusCode >= 200 && statusCode < 300) {
+                if (pretry) {
+                    pretry.completed = true;
+                    pretry.body = body;
+                }
+                resolve(body);
             }
-            resolve(result);
+            else if (statusCode == 500 || statusCode == 403) {
+                if (!pretry) {
+                    pretry = new constant_1.ICountArg();
+                }
+                if (pretry.count < 0) {
+                    if (pretry.completed) {
+                        resolve(pretry.body);
+                    }
+                    else {
+                        reject(statusCode);
+                    }
+                }
+                else {
+                    return new Promise((a, b) => {
+                        setTimeout(() => {
+                            a((pretry.count -= 1));
+                        }, pretry.sleep);
+                    }).then(() => resolve(rest_list_files_metadata(user, item, pretry)));
+                }
+            }
+            else {
+                reject(statusCode);
+            }
         });
     });
 }
-function rest_file_download(user, id) {
+function rest_file_download(user, id, pretry) {
     return new Promise((resolve, reject) => {
         request({
             url: GOOGLE_DRIVE_URL + '/drive/v3/files/' + id + '?alt=media',
             method: 'GET',
             headers: { Authorization: getAuthHeader(user) },
             json: false,
+            timeout: 300000,
             encoding: null
         }, (error, response, body) => {
-            // response.headers['content-type']
-            if (!SUCCEEDED(error, response)) {
-                resolve(undefined);
+            var statusCode = SUCCESS('rest_file_download', error, response, body);
+            if (statusCode >= 200 && statusCode < 300) {
+                var result = { id: id, contentType: response.headers['content-type'], data: body.toString('base64') };
+                if (pretry) {
+                    pretry.completed = true;
+                    pretry.body = result;
+                }
+                resolve(result);
+            }
+            else if (statusCode == 500 || statusCode == 403) {
+                if (!pretry) {
+                    pretry = new constant_1.ICountArg();
+                }
+                if (pretry.count < 0) {
+                    if (pretry.completed) {
+                        resolve(pretry.body);
+                    }
+                    else {
+                        reject(statusCode);
+                    }
+                }
+                else {
+                    return new Promise((a, b) => {
+                        setTimeout(() => {
+                            a((pretry.count -= 1));
+                        }, pretry.sleep);
+                    }).then(() => resolve(rest_file_download(user, id, pretry)));
+                }
             }
             else {
-                resolve({ id: id, contentType: response.headers['content-type'], data: body.toString('base64') });
+                reject();
             }
         });
     });
 }
-function rest_file_upload(user, content) {
+function rest_file_upload(user, content, pretry) {
     return new Promise((resolve, reject) => {
         const url = '/upload/drive/v2/files/' + content.id + '?uploadType=media&newRevision=false&updateViewedDate=false';
         console.log(url + ' ' + content.data.length);
@@ -152,18 +209,44 @@ function rest_file_upload(user, content) {
             headers: { "Authorization": getAuthHeader(user), "Content-Type": content.contentType },
             json: false,
             encoding: null,
+            timeout: 300000,
             body: new Buffer(content.data, 'base64')
         }, (error, response, body) => {
-            if (SUCCEEDED(error, response)) {
+            var statusCode = SUCCESS('rest_file_upload', error, response, body);
+            if (statusCode >= 200 && statusCode < 300) {
+                if (pretry) {
+                    pretry.completed = true;
+                    pretry.body = true;
+                }
                 resolve(true);
             }
+            else if (statusCode == 500 || statusCode == 403) {
+                if (!pretry) {
+                    pretry = new constant_1.ICountArg();
+                }
+                if (pretry.count < 0) {
+                    if (pretry.completed) {
+                        resolve(true);
+                    }
+                    else {
+                        reject(statusCode);
+                    }
+                }
+                else {
+                    return new Promise((a, b) => {
+                        setTimeout(() => {
+                            a((pretry.count -= 1));
+                        }, pretry.sleep);
+                    }).then(() => resolve(rest_file_upload(user, content, pretry)));
+                }
+            }
             else {
-                resolve(false);
+                reject();
             }
         });
     });
 }
-function rest_file_contacts(user, id) {
+function rest_file_contacts(user, id, pretry) {
     return new Promise((resolve, reject) => {
         const url = '/drive/v2/files/' + id + '/permissions';
         request({
@@ -172,8 +255,9 @@ function rest_file_contacts(user, id) {
             headers: { "Authorization": getAuthHeader(user) },
             json: true
         }, (error, response, body) => {
-            if (SUCCEEDED(error, response)) {
-                const buffer = [];
+            const buffer = [];
+            var statusCode = SUCCESS('rest_file_contacts', error, response, body);
+            if (statusCode >= 200 && statusCode < 300) {
                 body.items.forEach((item) => {
                     if (_.isString(item.emailAddress)) {
                         item.emailAddress = item.emailAddress.toLowerCase().trim();
@@ -186,7 +270,31 @@ function rest_file_contacts(user, id) {
                         }
                     }
                 });
+                if (pretry) {
+                    pretry.completed = true;
+                    pretry.body = buffer;
+                }
                 resolve(buffer);
+            }
+            else if (statusCode == 500 || statusCode == 403) {
+                if (!pretry) {
+                    pretry = new constant_1.ICountArg();
+                }
+                if (pretry.count < 0) {
+                    if (pretry.completed) {
+                        resolve(pretry.body);
+                    }
+                    else {
+                        reject(statusCode);
+                    }
+                }
+                else {
+                    return new Promise((a, b) => {
+                        setTimeout(() => {
+                            a((pretry.count -= 1));
+                        }, pretry.sleep);
+                    }).then(() => resolve(rest_file_contacts(user, id, pretry)));
+                }
             }
             else {
                 reject();

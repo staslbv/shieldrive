@@ -86,7 +86,6 @@ export function download(body: any): Promise<string> {
                 if (!SUCCEEDED(error, response) || response.headers['content-type'] != 'application/octet-stream') {
                     reject();
                 } else {
-                    console.log('downloaded .....');
                     resolve(z.toString('base64'));
                 }
             });

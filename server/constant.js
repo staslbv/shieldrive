@@ -11,13 +11,31 @@ exports.PID_TOKEN_TYPE = 'token_type';
 exports.PID_ACCESS_TOKEN = 'access_token';
 exports.PID_CLIENT_ID = 'client_id';
 exports.PID_UID = 'uid';
+exports.PID_CLOUDKEY = 'cloudKey';
 // Worker
-exports.PID_JOB_ISRUNNING = 'jobisrunning';
-exports.PID_JOB_COMPLETE_STATE = 'jobcompletestate';
+exports.PID_JOB_FLAG_BACKGND = 'fbackGnd';
+exports.PID_JOB_FLAG_CANCELPENDING = 'fcancelPending';
+exports.PID_JOB_FLAG_PROTECT = 'fprotect';
+exports.PID_JOB_FLAG_RUNNING = 'frunning';
+exports.PID_JOB_PROCESS_ID = 'processId';
 // Precognition fields
 exports.PID_URL_HOST = 'host';
 exports.PID_URL_PATH = 'pathname';
 exports.PID_URL_HOST_PKEY = 'precoHostId';
+class ICountArg {
+    constructor() {
+        this.MAX_COUNT = 5;
+        this.count = this.MAX_COUNT;
+        this.completed = false;
+        this.body = undefined;
+        this.sleeptime = 0;
+    }
+    get sleep() {
+        this.sleeptime += 1;
+        return 1000 * this.sleeptime;
+    }
+}
+exports.ICountArg = ICountArg;
 var ACCOUNT_TYPE;
 (function (ACCOUNT_TYPE) {
     ACCOUNT_TYPE[ACCOUNT_TYPE["SYSTEM"] = 0] = "SYSTEM";

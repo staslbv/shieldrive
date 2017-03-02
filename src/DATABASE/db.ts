@@ -7,6 +7,7 @@ export class CDb{
     user:              any;
     account:           any;
     token:             any;
+    workfolder:        any;
     preco_host:        any;
     preco_path:        any;
     initialize():Promise<any>{
@@ -18,12 +19,14 @@ export class CDb{
             } else {
                 this.sequelize = new Sequelize(undefined,undefined,undefined,{
                     "dialect": "sqlite",
-                    "storage": __dirname + "/localdb.sqlite"
+                    "storage": __dirname + "/localdb.sqlite",
+                    "logging": false
                 });
             } 
-             this.user    = this.sequelize.import(__dirname + '/model/user.js');
-             this.account = this.sequelize.import(__dirname + '/model/account.js');
-             this.token   = this.sequelize.import(__dirname + '/model/token.js');
+             this.user       = this.sequelize.import(__dirname + '/model/user.js');
+             this.account    = this.sequelize.import(__dirname + '/model/account.js');
+             this.token      = this.sequelize.import(__dirname + '/model/token.js');
+             this.workfolder = this.sequelize.import(__dirname + '/model/workfolder.js');
 
              this.preco_host = this.sequelize.import(__dirname + '/model/preco_host.js');
              this.preco_path = this.sequelize.import(__dirname + '/model/preco_path.js');
@@ -35,11 +38,15 @@ export class CDb{
              this.token.belongsTo(this.user);
              this.token.belongsTo(this.account);
              this.user.hasMany(this.token);
+             //
+             this.workfolder.belongsTo(this.account);
+             this.account.hasMany(this.workfolder);
 
              //Setup host : path 
              this.preco_path.belongsTo(this.preco_host);
              this.preco_host.hasMany(this.preco_path);
 
+            
              return this.sequelize.sync({force: this.FLAG_RESET_SCHEMA})
 
         }catch(e){

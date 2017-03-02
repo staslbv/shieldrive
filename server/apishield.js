@@ -105,7 +105,14 @@ function lock(user, args) {
             json: args
         }, (error, response, body) => {
             if (SUCCEEDED(error, response)) {
-                resolve(body);
+                if (!body || typeof body.objectId != 'string' || body.objectId.length == 0) {
+                    console.log('ITEM LOCK FAILED');
+                    reject(500);
+                }
+                else {
+                    console.log('ITEM LOCK SUCCEEDED');
+                    resolve(body);
+                }
             }
             else {
                 reject(500);
@@ -160,8 +167,6 @@ function scopeFolder(user, scope) {
 exports.scopeFolder = scopeFolder;
 function scopeDocument(user, objectId, scope) {
     return new Promise((resolve, reject) => {
-        console.log('calling scope: ');
-        console.log(JSON.stringify(scope, null, 4));
         request({
             url: helpacc_1.SHIELDOX_BASE_URL + '/documents/scope',
             method: 'POST',

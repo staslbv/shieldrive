@@ -11,16 +11,37 @@ export const PID_TOKEN_TYPE: string    = 'token_type';
 export const PID_ACCESS_TOKEN: string  = 'access_token';
 export const PID_CLIENT_ID: string     = 'client_id';
 export const PID_UID: string           = 'uid';
-
+export const PID_CLOUDKEY: string      = 'cloudKey';
 // Worker
-export const PID_JOB_ISRUNNING: string = 'jobisrunning';
-export const PID_JOB_COMPLETE_STATE: string    = 'jobcompletestate';
+export const PID_JOB_FLAG_BACKGND: string = 'fbackGnd';
+export const PID_JOB_FLAG_CANCELPENDING: string     = 'fcancelPending';
+export const PID_JOB_FLAG_PROTECT: string     = 'fprotect';
+export const PID_JOB_FLAG_RUNNING: string     = 'frunning';
+export const PID_JOB_PROCESS_ID: string     = 'processId';
 // Precognition fields
 export const PID_URL_HOST: string      = 'host';
 export const PID_URL_PATH: string      = 'pathname';
 export const PID_URL_HOST_PKEY: string = 'precoHostId';
 
 
+
+export class ICountArg{
+    MAX_COUNT: number = 5;
+    count: number;
+    completed: boolean;
+    body: any;
+    sleeptime: number;
+    get sleep(): number{
+        this.sleeptime += 1;
+        return 1000 *  this.sleeptime;
+    }
+    constructor(){
+        this.count = this.MAX_COUNT;
+        this.completed = false;
+        this.body = undefined;
+        this.sleeptime = 0;
+    }
+}
 
 export enum ACCOUNT_TYPE {
     SYSTEM,
@@ -84,10 +105,21 @@ export interface IContentBuffer{
 
 export interface IFolderWorkerStatus
 {
-    accountId: number; // account primary Key
-    key:       string; // 
+    id:             number;
+    accountId:      number; // account primary Key
+    cloudKey:       string; // cloud key
+    fbackGnd:       boolean;
+    fcancelPending: boolean;
+    fprotect:       boolean;
+    frunning:       boolean;
+    processId:      number;
 }
 
+export interface IFolderWorkerRequestResponse
+{
+    enable: boolean;
+    context : IFolderWorkerStatus
+}
 
 
 
