@@ -12,10 +12,11 @@ export class CDb{
     preco_path:        any;
     initialize():Promise<any>{
         try{
-            if (process.env.NODE_ENV == 'production'){
+          //  if (process.env.NODE_ENV == 'production'){
                 this.sequelize = new Sequelize(process.env.DATABASE_URL,{
     	              dialect: 'postgres'
                   });
+                  /*
             } else {
                 this.sequelize = new Sequelize(undefined,undefined,undefined,{
                     "dialect": "sqlite",
@@ -23,6 +24,7 @@ export class CDb{
                     "logging": false
                 });
             } 
+            */
              this.user       = this.sequelize.import(__dirname + '/model/user.js');
              this.account    = this.sequelize.import(__dirname + '/model/account.js');
              this.token      = this.sequelize.import(__dirname + '/model/token.js');
