@@ -2,6 +2,7 @@
 const request = require('request');
 const _ = require('underscore');
 const constant_1 = require("../constant");
+const stream = require("stream");
 ;
 ;
 ;
@@ -86,9 +87,45 @@ function rest_list_files_scan(user, flagFolder, buffer, title, token) {
         });
     });
 }
+function rest_list_files_scan_rid(user, flagFolder, buffer, title, rid, token) {
+    return new Promise((resolve, reject) => {
+        var url = '/drive/v2/files?';
+        const q_title = " and (title=\'" + title + "\')";
+        const q_FOLDER = "q=" + encodeURIComponent("\'" + rid + "\' in parents and " + "(mimeType=\'application/vnd.google-apps.folder\')" + q_title);
+        const q_FILE = "q=" + encodeURIComponent("\'" + rid + "\' in parents and " + "(mimeType contains \'office\' or mimeType contains \'msword\' or mimeType contains \'ms-excel\' or mimeType contains \'ms-powerpoint\' or mimeType contains \'application/pdf\' or mimeType contains \'application/x-pdf\' or mimeType contains \'application/vnd.pdf\' or mimeType contains \'application/acrobat\')" + q_title);
+        url += (flagFolder ? q_FOLDER : q_FILE);
+        if (token && typeof token == 'string' && token.length > 0) {
+            url += '&pageToken=' + token;
+        }
+        request({
+            url: GOOGLE_DRIVE_URL + url,
+            method: 'GET',
+            headers: {
+                Authorization: getAuthHeader(user)
+            },
+            json: true
+        }, (error, response, body) => {
+            if (SUCCEEDED('rest_list_files_scan_rid', error, response, body) && body && body.items) {
+                buffer.push(...body.items);
+                if (body.items.length == 0 || typeof body.nextPageToken != 'string' || body.nextPageToken.length == 0) {
+                    resolve(body);
+                }
+                else {
+                    resolve(rest_list_files_scan_rid(user, flagFolder, buffer, title, rid, body.nextPageToken));
+                }
+            }
+            else {
+                reject();
+            }
+        });
+    });
+}
 function rest_list_object_folder(user, buffer, rid, token) {
     return new Promise((resolve, reject) => {
         var url = '/drive/v2/files?q=' + encodeURIComponent("\'" + rid + "\' in parents");
+        if (token && typeof token == 'string' && token.length > 0) {
+            url += '&pageToken=' + token;
+        }
         request({
             url: GOOGLE_DRIVE_URL + url,
             method: 'GET',
@@ -154,6 +191,25 @@ function rest_list_files_metadata(user, item, pretry) {
         });
     });
 }
+function rest_file_FindById(user, nameId) {
+    return new Promise((resolve, reject) => {
+        return rest_list_files_metadata(user, { id: nameId.parentId })
+            .then((e) => {
+            const buffer = [];
+            return rest_list_files_scan_rid(user, nameId.folder, buffer, nameId.childId, e.id, undefined).then((e) => {
+                if (buffer.length > 0) {
+                    resolve(buffer[0]);
+                }
+                else {
+                    console.log('no results');
+                    reject(404);
+                }
+            }).catch((e) => reject(e));
+        })
+            .catch((e) => reject(e));
+    });
+}
+exports.rest_file_FindById = rest_file_FindById;
 function rest_file_download(user, id, pretry) {
     return new Promise((resolve, reject) => {
         request({
@@ -203,14 +259,16 @@ function rest_file_upload(user, content, pretry) {
     return new Promise((resolve, reject) => {
         const url = '/upload/drive/v2/files/' + content.id + '?uploadType=media&newRevision=false&updateViewedDate=false';
         console.log(url + ' ' + content.data.length);
-        request({
+        const bufferStream = new stream.PassThrough();
+        bufferStream.end(new Buffer(content.data, 'base64'));
+        bufferStream.pipe(request({
             url: GOOGLE_DRIVE_URL + url,
             method: 'PUT',
             headers: { "Authorization": getAuthHeader(user), "Content-Type": content.contentType },
             json: false,
             encoding: null,
             timeout: 300000,
-            body: new Buffer(content.data, 'base64')
+            time: true
         }, (error, response, body) => {
             var statusCode = SUCCESS('rest_file_upload', error, response, body);
             if (statusCode >= 200 && statusCode < 300) {
@@ -218,6 +276,7 @@ function rest_file_upload(user, content, pretry) {
                     pretry.completed = true;
                     pretry.body = true;
                 }
+                console.log('ULOAD ELLAPSED: [' + response.elapsedTime + ' ] ms.');
                 resolve(true);
             }
             else if (statusCode == 500 || statusCode == 403) {
@@ -243,7 +302,7 @@ function rest_file_upload(user, content, pretry) {
             else {
                 reject();
             }
-        });
+        }));
     });
 }
 function rest_file_contacts(user, id, pretry) {

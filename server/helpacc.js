@@ -138,17 +138,23 @@ function registerShieldTokenAccount(db, user, account, token) {
     var _account;
     return new Promise((resolve, reject) => {
         return registerTokenAccount(db, user, account, token).then((useracc) => {
-            return registerShieldAccount(db, useracc).then((item) => {
-                _account = useracc;
-                return registerShieldAccountArgs(db, useracc, item).then((e) => {
-                    resolve({
-                        authorization: 'Basic ' + e.token.access_token,
-                        account: _account
+            console.log('after acc token account ...');
+            return db.token.updateObject(useracc).then((useracc) => {
+                console.log('calling shieldox acc register ...');
+                return registerShieldAccount(db, useracc).then((item) => {
+                    _account = useracc;
+                    return registerShieldAccountArgs(db, useracc, item).then((e) => {
+                        resolve({
+                            authorization: 'Basic ' + e.token.access_token,
+                            account: _account
+                        });
+                    }).catch(() => {
+                        reject();
                     });
-                }).catch(() => {
+                }, () => {
                     reject();
                 });
-            }, () => {
+            }).catch((e) => {
                 reject();
             });
         }, () => {

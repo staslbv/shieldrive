@@ -6,6 +6,10 @@ import {SHIELDOX_BASE_URL} from './helpacc'
 
 const request = require('request');
 
+import * as  JSONStream from 'JSONStream';
+import * as stream from 'stream';
+import * as  es from     'event-stream';
+
 export interface IShieldFolderSyncRef{
     parentId: string; // account objectId
     folderId: string;
@@ -179,23 +183,34 @@ export function syncContactPromiseResolve(user: ILoginInfo,email: string, name: 
 
 export function lock(user: ILoginInfo, args: IShieldoxIOProtectArgs): Promise<IShieldoxIOProtectArgs>{
     return new Promise((resolve,reject)=>{
+        /*
+        es.readable(function (count, next) {
+            for (var key in args) {
+                this.emit('data', [key, args[key]]);
+            }
+            this.emit('end');
+            next();
+        }).pipe(JSONStream.stringifyObject()).pipe(
+        */
         request({
              url: SHIELDOX_BASE_URL + '/meta/lock', 
              method: 'POST',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
                  "sldx_accId": user.account.account.key,
-                 "sldx_accType": 2
+                 "sldx_accType": 2//,
+               //  "Content-Type":'application/json'
                 },
+             time:     true,
              json: args
-
         },(error: any, response: any, body: IShieldoxIOProtectArgs)=>{
+            if (response){
+                console.log('LOCK RESPONSE: ' + response.statusCode);
+            }
             if(SUCCEEDED(error,response)){
                 if (!body || typeof body.objectId != 'string' || body.objectId.length == 0 ){
-                    console.log('ITEM LOCK FAILED');
                     reject(500);
                 }else{
-                    console.log('ITEM LOCK SUCCEEDED');
                     resolve(body);
                 }
             }else{

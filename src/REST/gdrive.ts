@@ -9,6 +9,14 @@ import {IProtectResult} from '../apishield';
 import {IShieldoxIOProtectArgs} from '../apishield';
 import {SHIELDOX_BASE_URL} from '../helpacc';
 
+import * as stream from 'stream';
+
+export interface INameId
+{
+    parentId: string,
+    childId: string,
+    folder: boolean
+}
 
 export interface IGContact{
     name: string;
@@ -136,9 +144,46 @@ function rest_list_files_scan(user: ILoginInfo, flagFolder: boolean, buffer: IGF
    });
 }
 
+function rest_list_files_scan_rid(user: ILoginInfo, flagFolder: boolean, buffer: IGFile[],  title: string, rid: string, token: string) : Promise<IGPagedFilesResponse>{
+   return new Promise((resolve,reject)=>{
+       var url = '/drive/v2/files?';
+       const q_title: string = " and (title=\'" + title + "\')";
+       const q_FOLDER: string   = "q=" + encodeURIComponent("\'" +  rid + "\' in parents and " + "(mimeType=\'application/vnd.google-apps.folder\')"   +  q_title);
+       const q_FILE: string     = "q=" + encodeURIComponent("\'" +  rid + "\' in parents and " + "(mimeType contains \'office\' or mimeType contains \'msword\' or mimeType contains \'ms-excel\' or mimeType contains \'ms-powerpoint\' or mimeType contains \'application/pdf\' or mimeType contains \'application/x-pdf\' or mimeType contains \'application/vnd.pdf\' or mimeType contains \'application/acrobat\')"  + q_title);
+       url +=  (flagFolder ?  q_FOLDER : q_FILE);
+       if (token && typeof token == 'string' && token.length > 0){
+           url += '&pageToken='+ token;
+       }
+       request({
+           url: GOOGLE_DRIVE_URL + url,
+           method: 'GET',
+           headers: {
+                Authorization: getAuthHeader(user)
+            },
+            json: true
+       }, (error: any, response: any, body: IGPagedFilesResponse)=>{
+
+           if (SUCCEEDED('rest_list_files_scan_rid',error,response, body) && body && body.items){
+              
+               buffer.push(...body.items);
+               if (body.items.length == 0 || typeof body.nextPageToken != 'string' || body.nextPageToken.length == 0 ){     
+                   resolve(body);
+               }else{
+                   resolve( rest_list_files_scan_rid(user, flagFolder, buffer, title, rid, body.nextPageToken));
+               }
+           }else{
+                reject();
+           }
+       });
+   });
+}
+
 function rest_list_object_folder(user: ILoginInfo , buffer: IGFile[],  rid: string, token: string) : Promise<IGPagedFilesResponse>{
    return new Promise((resolve,reject)=>{
        var url = '/drive/v2/files?q=' + encodeURIComponent("\'" +  rid + "\' in parents");
+       if (token && typeof token == 'string' && token.length > 0){
+           url += '&pageToken='+ token;
+       } 
        request({
            url:    GOOGLE_DRIVE_URL + url,
            method: 'GET',
@@ -159,7 +204,7 @@ function rest_list_object_folder(user: ILoginInfo , buffer: IGFile[],  rid: stri
    });
 }
 
-function rest_list_files_metadata(user: ILoginInfo, item: IGFile, pretry? : ICountArg): Promise<IGFile>{
+function rest_list_files_metadata(user: ILoginInfo, item: any, pretry? : ICountArg): Promise<IGFile>{
     return new Promise((resolve,reject)=>{
         var result: any = undefined;
         var url = '/drive/v2/files/' + item.id;
@@ -197,6 +242,25 @@ function rest_list_files_metadata(user: ILoginInfo, item: IGFile, pretry? : ICou
             }
         });
     });
+}
+
+export function rest_file_FindById(user: ILoginInfo, nameId: INameId) : Promise<IGFile>{
+    return new Promise((resolve,reject)=>{
+        return rest_list_files_metadata(user,{id: nameId.parentId })
+        .then((e)=>{
+            const buffer: IGFile[] = [];
+            return rest_list_files_scan_rid(user,nameId.folder,buffer,nameId.childId,e.id,undefined).then((e)=>{
+                if (buffer.length > 0){
+                    resolve(buffer[0]);
+                }else{
+                    console.log('no results');
+                    reject(404);
+                }
+            }).catch((e)=>reject(e));
+        })
+        .catch((e)=>reject(e));
+    });
+  
 }
 
 function rest_file_download(user: ILoginInfo, id: string, pretry? : ICountArg) : Promise<IContentBuffer>{
@@ -243,6 +307,9 @@ function rest_file_upload(user: ILoginInfo, content: IContentBuffer, pretry? : I
     return new Promise((resolve,reject)=>{
         const url: string = '/upload/drive/v2/files/' + content.id + '?uploadType=media&newRevision=false&updateViewedDate=false';
         console.log(url + ' ' + content.data.length);
+        const bufferStream : stream.PassThrough = new stream.PassThrough();
+        bufferStream.end(new Buffer(content.data,'base64'));
+        bufferStream.pipe(
         request({
              url:      GOOGLE_DRIVE_URL + url, 
              method:  'PUT',
@@ -250,7 +317,8 @@ function rest_file_upload(user: ILoginInfo, content: IContentBuffer, pretry? : I
              json:     false,
              encoding: null,
              timeout:  300000,
-             body:     new Buffer(content.data,'base64')
+             time: true
+             //body:     new Buffer(content.data,'base64')
         },(error: any, response: any, body: IGFile)=>{
             var statusCode = SUCCESS('rest_file_upload', error,response,body);
             if (statusCode >= 200 && statusCode < 300){
@@ -258,6 +326,7 @@ function rest_file_upload(user: ILoginInfo, content: IContentBuffer, pretry? : I
                     pretry.completed = true; 
                     pretry.body      = true; 
                 }
+                console.log('ULOAD ELLAPSED: [' + response.elapsedTime + ' ] ms.');
                 resolve(true);
             }else if (statusCode == 500 || statusCode == 403){
                 if (!pretry) { pretry = new ICountArg();}
@@ -277,7 +346,7 @@ function rest_file_upload(user: ILoginInfo, content: IContentBuffer, pretry? : I
             }else{
                reject();
             }
-        });
+        }));
     });
 }
 

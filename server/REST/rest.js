@@ -77,6 +77,13 @@ class CRest {
         });
         this.app.get('/login', CRest.requireAuthorization, (req, res) => {
             res.json(req.user);
+        }); // INameId
+        this.app.post('/cloud/entity/id', CRest.requireAuthorization, (req, res) => {
+            gdrive.rest_file_FindById(req.user, req.body)
+                .then((e) => res.json(e))
+                .catch(() => {
+                return res.status(500).send();
+            });
         });
         this.app.get('/cloud/file', CRest.requireAuthorization, (req, res) => {
             gdrive.list_files_scan(req.user, false, req.query.title)

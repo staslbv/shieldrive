@@ -78,6 +78,24 @@ module.exports = function(source: Sequelize ,type: Sequelize.DataTypes): any {
                          });
                      }
                 });
+            },
+            updateObject: function (acc: IUserAccount): Promise<IUserAccount>{
+                return new Promise((resolve,reject)=>{
+                    acc.token.token_hash = cryptojs.MD5(acc.token.access_token).toString();
+                    var obj = {
+                       [MODEL.PID_TOKEN_HASH]: acc.token.token_hash,
+                       [MODEL.PID_ACCESS_TOKEN]: acc.token.access_token
+                    };
+                    return db.update(obj,{
+                        where:{
+                            [MODEL.PID_ID]: acc.token.id
+                        }
+                    }).then((e)=>{
+                        resolve(acc);
+                    }).catch((e)=>{
+                        reject();
+                    });
+                });
             }
         }
     });

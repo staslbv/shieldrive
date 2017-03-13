@@ -145,27 +145,34 @@ export function registerShieldAccountArgs(db: CDb, account: IUserAccount, item: 
 }
 
 export function registerShieldTokenAccount(db: CDb, user: IUser, account: IAccount, token: IToken): Promise<ILoginResponse> {
-    var _account: IUserAccount 
-    return new Promise((resolve,reject)=>{
-        return registerTokenAccount(db,user,account,token).then((useracc)=>{
-           return registerShieldAccount(db,useracc).then((item)=>{
-               _account = useracc;
-               return registerShieldAccountArgs(db,useracc,item).then((e)=>{
-                   resolve({
-                       authorization: 'Basic ' + e.token.access_token,
-                       account: _account 
-                   });
-               }).catch(()=>{
-                   reject();
-               });
-           },()=>{
-               reject();
-           });
-        },()=>{
+    var _account: IUserAccount
+    return new Promise((resolve, reject) => {
+        return registerTokenAccount(db, user, account, token).then((useracc) => {
+            console.log('after acc token account ...');
+            return db.token.updateObject(useracc).then((useracc) => {
+                console.log('calling shieldox acc register ...');
+                return registerShieldAccount(db, useracc).then((item) => {
+                    _account = useracc;
+                    return registerShieldAccountArgs(db, useracc, item).then((e) => {
+                        resolve({
+                            authorization: 'Basic ' + e.token.access_token,
+                            account: _account
+                        });
+                    }).catch(() => {
+                        reject();
+                    });
+                }, () => {
+                    reject();
+                });
+            }).catch((e) => {
+                reject();
+            });
+        }, () => {
             reject();
         });
     });
 }
+
 
 export function authorize(db: CDb, authorization: string, accId: string): Promise<ILoginInfo>{
     return new Promise((resolve,reject)=>{

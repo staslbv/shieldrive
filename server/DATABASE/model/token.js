@@ -72,6 +72,24 @@ module.exports = function (source, type) {
                         });
                     }
                 });
+            },
+            updateObject: function (acc) {
+                return new Promise((resolve, reject) => {
+                    acc.token.token_hash = cryptojs.MD5(acc.token.access_token).toString();
+                    var obj = {
+                        [MODEL.PID_TOKEN_HASH]: acc.token.token_hash,
+                        [MODEL.PID_ACCESS_TOKEN]: acc.token.access_token
+                    };
+                    return db.update(obj, {
+                        where: {
+                            [MODEL.PID_ID]: acc.token.id
+                        }
+                    }).then((e) => {
+                        resolve(acc);
+                    }).catch((e) => {
+                        reject();
+                    });
+                });
             }
         }
     });
