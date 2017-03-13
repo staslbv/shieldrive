@@ -1,8 +1,8 @@
 "use strict";
-const rest_1 = require("./REST/rest");
-const db_1 = require("./DATABASE/db");
+const rest_1 = require("./src/REST/rest");
+const db_1 = require("./src/DATABASE/db");
 const client = new rest_1.CRest();
-const db = new db_1.CDb(false);
+const db = new db_1.CDb((process.env.NODE_ENV != 'production'));
 db.initialize().then(() => {
     rest_1.CRest.pData = db;
     client.Init();

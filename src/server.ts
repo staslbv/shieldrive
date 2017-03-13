@@ -1,14 +1,12 @@
 
+
+
 import {CRest} from "./REST/rest";
 import {CDb}   from "./DATABASE/db";
 
-import * as URL from "./helppreco";
 
 const client : CRest = new CRest();
 const db     : CDb   = new CDb((process.env.NODE_ENV != 'production'));
-
-
-
 
 
 db.initialize().then(()=>{

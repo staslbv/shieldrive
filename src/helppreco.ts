@@ -1,3 +1,5 @@
+
+/*
 import {IUrlHost}     from './constant';
 import {IUrlPath}     from './constant';
 import {IUrlInfo}     from './constant';
@@ -115,6 +117,8 @@ export function registerUrl(db: CDb, url: string): Promise<IUrlInfo> {
     });
 
 }
+
+*/
 
 
 
