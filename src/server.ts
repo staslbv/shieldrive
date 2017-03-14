@@ -6,7 +6,7 @@ import {CDb}   from "./DATABASE/db";
 
 
 const client : CRest = new CRest();
-const db     : CDb   = new CDb((process.env.NODE_ENV != 'production'));
+const db     : CDb   = new CDb(false);//(process.env.NODE_ENV != 'production'));
 
 
 db.initialize().then(()=>{

@@ -758,8 +758,10 @@ export function getViewOptions(user: ILoginInfo, entryId: string): Promise<IShie
 
 export function protectFile(user: ILoginInfo, entryId: string, color: number): Promise<IShieldoxIOProtectArgs> {
     return new Promise((resolve, reject) => {
-        return (new CGFileSynk(user, entryId, undefined, undefined)).protect(color, true,undefined)
-            .then((e) => resolve(e), (code) => reject(code));
+        var file = new CGFileSynk(user, entryId, undefined, undefined);
+        return file.loadMetadata().then((e)=>{
+            return file.protect(color, true,undefined).then((e) => resolve(e), (code) => reject(code));
+        }).catch((e)=>reject(e));
     });
 }
 

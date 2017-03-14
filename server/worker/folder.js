@@ -697,8 +697,10 @@ function getViewOptions(user, entryId) {
 exports.getViewOptions = getViewOptions;
 function protectFile(user, entryId, color) {
     return new Promise((resolve, reject) => {
-        return (new CGFileSynk(user, entryId, undefined, undefined)).protect(color, true, undefined)
-            .then((e) => resolve(e), (code) => reject(code));
+        var file = new CGFileSynk(user, entryId, undefined, undefined);
+        return file.loadMetadata().then((e) => {
+            return file.protect(color, true, undefined).then((e) => resolve(e), (code) => reject(code));
+        }).catch((e) => reject(e));
     });
 }
 exports.protectFile = protectFile;
