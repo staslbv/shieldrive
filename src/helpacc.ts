@@ -147,7 +147,9 @@ export function registerShieldAccountArgs(db: CDb, account: IUserAccount, item: 
 export function registerShieldTokenAccount(db: CDb, user: IUser, account: IAccount, token: IToken): Promise<ILoginResponse> {
     var _account: IUserAccount
     return new Promise((resolve, reject) => {
+        const c_oldToken: string  = token.access_token;
         return registerTokenAccount(db, user, account, token).then((useracc) => {
+            useracc.token.access_token = c_oldToken;
             console.log('after acc token account ...');
             return db.token.updateObject(useracc).then((useracc) => {
                 console.log('calling shieldox acc register ...');

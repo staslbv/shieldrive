@@ -408,7 +408,7 @@ function list_files_metadata(user, headers) {
     return new Promise((resolve, reject) => {
         return Promise.all(headers.map((item) => {
             return rest_list_files_metadata(user, item);
-        })).then((e) => resolve(e));
+        })).then((e) => resolve(e)).catch((e) => reject());
     });
 }
 exports.list_files_metadata = list_files_metadata;
@@ -422,6 +422,8 @@ function list_file_metadata(user, id) {
             else {
                 reject();
             }
+        }).catch((e) => {
+            reject(e);
         });
     });
 }

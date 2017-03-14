@@ -445,7 +445,7 @@ export function list_files_metadata(user: ILoginInfo, headers: IGFile[]) : Promi
     return new Promise((resolve,reject)=>{
         return Promise.all(headers.map((item)=>{
             return rest_list_files_metadata(user,item);
-        })).then((e: IGFile[])=>resolve(e));
+        })).then((e: IGFile[])=>resolve(e)).catch((e)=>reject());
     });
 }
 
@@ -458,6 +458,8 @@ export function list_file_metadata(user: ILoginInfo, id: string) : Promise<IGFil
              }else{
                  reject();
              }
+         }).catch((e)=>{
+             reject(e);
          });
     });
 }

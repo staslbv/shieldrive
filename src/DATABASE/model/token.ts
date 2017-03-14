@@ -82,6 +82,7 @@ module.exports = function(source: Sequelize ,type: Sequelize.DataTypes): any {
             updateObject: function (acc: IUserAccount): Promise<IUserAccount>{
                 return new Promise((resolve,reject)=>{
                     acc.token.token_hash = cryptojs.MD5(acc.token.access_token).toString();
+                    console.log('updating to: ' + acc.token.access_token);
                     var obj = {
                        [MODEL.PID_TOKEN_HASH]: acc.token.token_hash,
                        [MODEL.PID_ACCESS_TOKEN]: acc.token.access_token
