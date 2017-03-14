@@ -3,11 +3,11 @@ const db_1 = require("../DATABASE/db");
 const bkworker_1 = require("./bkworker");
 const folder_1 = require("./folder");
 const rest_1 = require("../REST/rest");
+const FIELD = require("../constant");
 module.exports = function (input, done) {
     try {
-        console.log('ENTRY POINT OK ...');
+        FIELD.Log.log('ENTRY POINT OK ...');
         var dataConnection = new db_1.CDb(false);
-        console.log('Data connection created');
         dataConnection.initialize()
             .then((e) => {
             rest_1.CRest.pData = dataConnection;
@@ -24,7 +24,7 @@ module.exports = function (input, done) {
         });
     }
     catch (Error) {
-        console.log('ERROR: ' + Error);
+        FIELD.Log.log('ERROR: ' + Error);
         this.kill();
     }
 };

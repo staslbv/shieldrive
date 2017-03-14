@@ -19,7 +19,7 @@ export class CDb{
            //       });
                   
           //  } else {
-            /*
+            
             this.sequelize = new Sequelize(DATABESE_NAME, "scnull@q631ozbdob","Osafe1341",{
 		         "dialect" : "mssql",
 		         "port" : 1433,
@@ -28,14 +28,14 @@ export class CDb{
 		 	           "encrypt": true,
 		 	           "loginTimeout": 30
 		            }});
-                    */
+            /*
           
                 this.sequelize = new Sequelize(undefined,undefined,undefined,{
                     "dialect": "sqlite",
                     "storage": __dirname + "/localdb.sqlite",
                     "logging": false
                 });
-            
+            */
            
             
              this.user       = this.sequelize.import(__dirname + '/model/user.js');

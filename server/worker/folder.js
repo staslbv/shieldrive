@@ -1,4 +1,5 @@
 "use strict";
+const FIELD = require("../constant");
 const gdrive = require("../REST/gdrive");
 const apishield = require("../apishield");
 const bkworker_1 = require("./bkworker");
@@ -369,15 +370,15 @@ class CGFolderSynk extends CGEntry {
             })
                 .then((e) => {
                 if (e.context.frunning) {
-                    console.log('>>>>>>>>>>>>>>>>>>>>>      CANCELING CURRENT SCAN');
+                    FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>>      CANCELING CURRENT SCAN');
                     return context.cancelScan(this.shieldObj.color > 0);
                 }
                 else if (e.enable) {
-                    console.log('>>>>>>>>>>>>>>>>>>>>       BEGINNING NEW SCAN');
+                    FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>       BEGINNING NEW SCAN');
                     return context.beginScan();
                 }
                 else {
-                    console.log('>>>>>>>>>>>>>>>>>>>>       NO ACTION TAKEN');
+                    FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>       NO ACTION TAKEN');
                     resolve(e);
                 }
             })
@@ -386,7 +387,7 @@ class CGFolderSynk extends CGEntry {
                     this.batchSpawn(this.shieldObj, context);
                 }
                 else {
-                    console.log('>>>>>>>>>>>>>>>>>>>>       CANCELATION PENDING ...');
+                    FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>       CANCELATION PENDING ...');
                 }
                 resolve(this.shieldObj);
             })
@@ -394,24 +395,30 @@ class CGFolderSynk extends CGEntry {
         });
     }
     batchSpawn(folder, context) {
-        const thread = spawn("worker//process.js");
-        thread.send({
-            user: this.user,
-            entryId: this.entryId,
-            metadata: this.metadata,
-            folder: folder,
-            context: context.statusObj
-        })
-            .on('message', function (response) {
-            console.log('THREAD COMPLETED !');
-            thread.kill();
-        })
-            .on('error', (error) => {
-            console.log('THREAD ERROR ! : ' + error);
-        })
-            .on('exit', () => {
-            console.log('THREAD EXIT !');
-        });
+        try {
+            FIELD.Log.log('spawn BEGIN .....');
+            const thread = spawn("src//worker//process.js");
+            thread.send({
+                user: this.user,
+                entryId: this.entryId,
+                metadata: this.metadata,
+                folder: folder,
+                context: context.statusObj
+            })
+                .on('message', function (response) {
+                FIELD.Log.log('THREAD COMPLETED !');
+                thread.kill();
+            })
+                .on('error', (error) => {
+                FIELD.Log.log('THREAD ERROR ! : ' + error);
+            })
+                .on('exit', () => {
+                FIELD.Log.log('THREAD EXIT !');
+            });
+        }
+        catch (Exception) {
+            FIELD.Log.log('EXCEPTION: ' + Exception);
+        }
     }
     batchProtect(folder, context) {
         this.folders = [];

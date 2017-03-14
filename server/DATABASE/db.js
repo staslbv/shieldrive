@@ -9,21 +9,23 @@ class CDb {
             //           dialect: 'postgres'
             //       });
             //  } else {
-            /*
-            this.sequelize = new Sequelize(DATABESE_NAME, "scnull@q631ozbdob","Osafe1341",{
-                 "dialect" : "mssql",
-                 "port" : 1433,
-                 "host" : "q631ozbdob.database.windows.net",
+            this.sequelize = new Sequelize(DATABESE_NAME, "scnull@q631ozbdob", "Osafe1341", {
+                "dialect": "mssql",
+                "port": 1433,
+                "host": "q631ozbdob.database.windows.net",
                 "dialectOptions": {
-                       "encrypt": true,
-                       "loginTimeout": 30
-                    }});
-                    */
-            this.sequelize = new Sequelize(undefined, undefined, undefined, {
-                "dialect": "sqlite",
-                "storage": __dirname + "/localdb.sqlite",
-                "logging": false
+                    "encrypt": true,
+                    "loginTimeout": 30
+                }
             });
+            /*
+          
+                this.sequelize = new Sequelize(undefined,undefined,undefined,{
+                    "dialect": "sqlite",
+                    "storage": __dirname + "/localdb.sqlite",
+                    "logging": false
+                });
+            */
             this.user = this.sequelize.import(__dirname + '/model/user.js');
             this.account = this.sequelize.import(__dirname + '/model/account.js');
             this.token = this.sequelize.import(__dirname + '/model/token.js');

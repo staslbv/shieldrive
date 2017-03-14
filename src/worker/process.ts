@@ -4,17 +4,17 @@ import {BackgndWorker} from './bkworker'
 import {CGFolderSynk}  from './folder'
 import {CRest}         from '../REST/rest'
 
+import * as FIELD from '../constant'
 
 module.exports = function (input,done){
     try {
-        console.log('ENTRY POINT OK ...');
+        FIELD.Log.log('ENTRY POINT OK ...');
         var dataConnection: CDb = new CDb(false);
-        console.log('Data connection created');
         dataConnection.initialize()
             .then((e) => {
                 CRest.pData = dataConnection;
                 const worker: BackgndWorker = new BackgndWorker(CRest.pData, input.user, input.entryId, input.folder.color);
-                const source: CGFolderSynk = new CGFolderSynk(
+                const source: CGFolderSynk  = new CGFolderSynk(
                     input.user,
                     input.entryId,
                     input.metadata
@@ -29,7 +29,7 @@ module.exports = function (input,done){
                 done();
             });
     } catch (Error) {
-        console.log('ERROR: ' + Error);
+        FIELD.Log.log('ERROR: ' + Error);
         this.kill();
     }
 }

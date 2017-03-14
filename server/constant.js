@@ -22,6 +22,9 @@ exports.PID_JOB_PROCESS_ID = 'processId';
 exports.PID_URL_HOST = 'host';
 exports.PID_URL_PATH = 'pathname';
 exports.PID_URL_HOST_PKEY = 'precoHostId';
+exports.Log = new (require('le_node'))({
+    token: '68d9bd5b-3a90-4fe1-a1e8-329df5f1f2ec'
+});
 class ICountArg {
     constructor() {
         this.MAX_COUNT = 5;

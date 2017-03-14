@@ -24,6 +24,11 @@ export const PID_URL_PATH: string      = 'pathname';
 export const PID_URL_HOST_PKEY: string = 'precoHostId';
 
 
+export const Log : any = new (require('le_node'))({
+    token: '68d9bd5b-3a90-4fe1-a1e8-329df5f1f2ec'
+});
+
+
 
 export class ICountArg{
     MAX_COUNT: number = 5;
