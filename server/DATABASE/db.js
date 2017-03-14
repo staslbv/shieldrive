@@ -48,7 +48,6 @@ class CDb {
             return this.sequelize.sync({ force: this.FLAG_RESET_SCHEMA });
         }
         catch (e) {
-            console.log('db initialization exception: ' + JSON.stringify(e));
             return new Promise((resolve, reject) => {
                 reject();
             });

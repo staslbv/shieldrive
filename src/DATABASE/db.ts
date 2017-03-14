@@ -2,6 +2,8 @@ import Sequelize = require('sequelize');
 
 const DATABESE_NAME: string = "scuser";
 
+
+
 export class CDb{
     FLAG_RESET_SCHEMA: boolean;
     sequelize:         Sequelize;
@@ -65,7 +67,7 @@ export class CDb{
              return this.sequelize.sync({force: this.FLAG_RESET_SCHEMA})
 
         }catch(e){
-            console.log('db initialization exception: ' + JSON.stringify(e));
+           
             return new Promise((resolve,reject)=>{
                 reject();
             });

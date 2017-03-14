@@ -4,11 +4,10 @@ import {BackgndWorker} from './bkworker'
 import {CGFolderSynk}  from './folder'
 import {CRest}         from '../REST/rest'
 
-import * as FIELD from '../constant'
+
 
 module.exports = function (input,done){
     try {
-        FIELD.Log.log('ENTRY POINT OK ...');
         var dataConnection: CDb = new CDb(false);
         dataConnection.initialize()
             .then((e) => {
@@ -29,7 +28,6 @@ module.exports = function (input,done){
                 done();
             });
     } catch (Error) {
-        FIELD.Log.log('ERROR: ' + Error);
         this.kill();
     }
 }
