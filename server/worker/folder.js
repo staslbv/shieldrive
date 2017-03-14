@@ -706,7 +706,9 @@ function protectFile(user, entryId, color) {
     return new Promise((resolve, reject) => {
         var file = new CGFileSynk(user, entryId, undefined, undefined);
         return file.loadMetadata().then((e) => {
-            return file.protect(color, true, undefined).then((e) => resolve(e), (code) => reject(code));
+            return file.parent.syncFolder().then((e) => {
+                return file.protect(color, true, undefined).then((e) => resolve(e), (code) => reject(code));
+            }).catch((e) => reject(e));
         }).catch((e) => reject(e));
     });
 }
