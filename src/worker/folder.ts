@@ -549,7 +549,15 @@ export class CGFileSynk extends CGEntry {
                         reject(409); // can not unprotect file in folder or operation canceled...
                     } else {
                         this.contentIoArgs.color   = color;
-                        this.contentIoArgs.protect = (force || color == 0 || this.parent.shieldObj.color == 0);
+                        this.contentIoArgs.protect = force;
+                        
+                        if (color == 0 && this.parent.shieldObj.color > 0){
+                            this.contentIoArgs.protect = false;
+                        }else if ((color == 0 && this.parent.shieldObj.color == 0) || 
+                           ((color > 0) && (this.parent.shieldObj.color > 0) && (color != this.parent.shieldObj.color))) {
+                            this.contentIoArgs.protect = true;
+                        }
+                       
 
                         console.log('Calling lock ...');
 
