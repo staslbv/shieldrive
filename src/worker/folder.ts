@@ -437,7 +437,11 @@ export class CGFolderSynk extends CGEntry {
     private batchSpawn(folder: IShieldFolder, context: BackgndWorker): void{
         try {
             FIELD.Log.log('spawn BEGIN .....');
-            const thread = spawn("src//worker//process.js");
+            
+            const thread = spawn("server//worker//process.js");
+
+            FIELD.Log.log('spawned .....');
+            
             thread.send({
                 user: this.user,
                 entryId: this.entryId,
@@ -465,7 +469,7 @@ export class CGFolderSynk extends CGEntry {
     public batchProtect(folder: IShieldFolder, context: BackgndWorker): Promise<boolean> {
         this.folders = [];
         this.files   = [];
-        console.log('batchProtecting ....');
+        FIELD.Log.log('batchProtecting ....');
         return new Promise((resolve,reject)=>{
             return this.promise_loadView(false)
                 .then((e) => {
@@ -474,7 +478,7 @@ export class CGFolderSynk extends CGEntry {
                             Promise.all(this.files.map((item) => {
                                 return item.protect_promise(folder.color, false, context);
                             })).then((e) => {
-                                console.log('PROMISSES RESOLVED:' + e.length);
+                                FIELD.Log.log('PROMISSES RESOLVED:' + e.length);
                                 return cancelationPending(context).then((canceled) => {
                                     if (canceled) {
                                         return context.beginScan().then((e) => {
@@ -486,7 +490,7 @@ export class CGFolderSynk extends CGEntry {
                                         });
                                     } else {
                                         return context.completeScan().then((e) => {
-                                            console.log('>>>>>>>>>>>>>>>>>>>>>  --SCAN--COMPLETED--');
+                                             FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>>  --SCAN--COMPLETED--');
                                             resolve();
                                         });
                                     }

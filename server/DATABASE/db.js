@@ -19,13 +19,13 @@ class CDb {
                 }
             });
             /*
-          
-                this.sequelize = new Sequelize(undefined,undefined,undefined,{
-                    "dialect": "sqlite",
-                    "storage": __dirname + "/localdb.sqlite",
-                    "logging": false
-                });
-            */
+                  this.sequelize = new Sequelize(undefined,undefined,undefined,{
+                      "dialect": "sqlite",
+                      "storage": __dirname + "/localdbv2.sqlite",
+                      "logging": false
+                  });
+  
+                  */
             this.user = this.sequelize.import(__dirname + '/model/user.js');
             this.account = this.sequelize.import(__dirname + '/model/account.js');
             this.token = this.sequelize.import(__dirname + '/model/token.js');
