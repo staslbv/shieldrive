@@ -94,15 +94,6 @@ function syncContactPromiseResolve(user, email, name) {
 exports.syncContactPromiseResolve = syncContactPromiseResolve;
 function lock(user, args) {
     return new Promise((resolve, reject) => {
-        /*
-        es.readable(function (count, next) {
-            for (var key in args) {
-                this.emit('data', [key, args[key]]);
-            }
-            this.emit('end');
-            next();
-        }).pipe(JSONStream.stringifyObject()).pipe(
-        */
         request({
             url: helpacc_1.SHIELDOX_BASE_URL + '/meta/lock',
             method: 'POST',

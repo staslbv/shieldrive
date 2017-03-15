@@ -567,8 +567,6 @@ export class CGFileSynk extends CGEntry {
                            ((color > 0) && (this.parent.shieldObj.color > 0) && (color != this.parent.shieldObj.color))) {
                             this.contentIoArgs.protect = true;
                         }
-                       
-
                         console.log('Calling lock ...');
 
 
@@ -778,10 +776,11 @@ export function protectFile(user: ILoginInfo, entryId: string, color: number): P
     return new Promise((resolve, reject) => {
         var file = new CGFileSynk(user, entryId, undefined, undefined);
         return file.loadMetadata().then((e)=>{
-           return file.parent.syncFolder().then((e)=>{
-               return file.protect(color, true,undefined).then((e) => resolve(e), (code) => reject(code));
-           }).catch((e)=>reject(e));
-        }).catch((e)=>reject(e));
+             return file.protect(color, true,undefined).then((e) => resolve(e), (code) => reject(code));
+        }).catch((e)=>{
+            reject(e);
+        })
+        
     });
 }
 

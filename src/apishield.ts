@@ -183,15 +183,6 @@ export function syncContactPromiseResolve(user: ILoginInfo,email: string, name: 
 
 export function lock(user: ILoginInfo, args: IShieldoxIOProtectArgs): Promise<IShieldoxIOProtectArgs>{
     return new Promise((resolve,reject)=>{
-        /*
-        es.readable(function (count, next) {
-            for (var key in args) {
-                this.emit('data', [key, args[key]]);
-            }
-            this.emit('end');
-            next();
-        }).pipe(JSONStream.stringifyObject()).pipe(
-        */
         request({
              url: SHIELDOX_BASE_URL + '/meta/lock', 
              method: 'POST',
@@ -199,7 +190,6 @@ export function lock(user: ILoginInfo, args: IShieldoxIOProtectArgs): Promise<IS
                  "Authorization": 'Basic ' + user.token.access_token,
                  "sldx_accId": user.account.account.key,
                  "sldx_accType": 2//,
-               //  "Content-Type":'application/json'
                 },
              time:     true,
              json: args

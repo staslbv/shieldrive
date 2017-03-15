@@ -154,7 +154,7 @@ export function registerShieldTokenAccount(db: CDb, user: IUser, account: IAccou
             return db.token.updateObject(useracc).then((useracc) => {
                 console.log('calling shieldox acc register ...');
                 return registerShieldAccount(db, useracc).then((item) => {
-                    _account = useracc;
+                   _account = useracc;
                     return registerShieldAccountArgs(db, useracc, item).then((e) => {
                         resolve({
                             authorization: 'Basic ' + e.token.access_token,

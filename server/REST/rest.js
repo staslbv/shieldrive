@@ -158,12 +158,12 @@ class CRest {
         this.app.get('/cloud/file/:id/protect/:color', CRest.requireAuthorization, (req, res) => {
             worker.protectFile(req.user, req.params.id, parseInt(req.params.color))
                 .then((e) => res.json(e))
-                .catch((e) => { return res.status(e).send(); });
+                .catch((e) => { return res.status(500).send(); });
         });
         this.app.get('/cloud/folder/:id/protect/:color', CRest.requireAuthorization, (req, res) => {
             worker.protectFolder(req.user, req.params.id, parseInt(req.params.color))
                 .then((e) => res.json(e))
-                .catch((e) => { return res.status(e).send(); });
+                .catch((e) => { return res.status(500).send(); });
         });
         this.app.get('/cloud/folder/:id/context/:color', CRest.requireAuthorization, (req, res) => {
             console.log('calculating context ...');
