@@ -1,6 +1,7 @@
 "use strict";
 const request = require('request');
 const _ = require('underscore');
+const APISHIELD = require("../apishield");
 const constant_1 = require("../constant");
 const stream = require("stream");
 ;
@@ -463,3 +464,37 @@ function file_upload(user, id, data) {
     });
 }
 exports.file_upload = file_upload;
+function rest_file_preview(user, nameId) {
+    var objFile = undefined;
+    return new Promise((resolve, reject) => {
+        return rest_file_FindById(user, nameId).then((e) => {
+            objFile = e;
+            return file_download(user, objFile.id).then((e) => {
+                var dargs = {
+                    data: e.data,
+                    fileName: objFile.title
+                };
+                var input = {
+                    data: {
+                        fileName: objFile.title
+                    }
+                };
+                return APISHIELD.decrypt(user, dargs).then((e) => {
+                    input.data.data = e.data;
+                    return APISHIELD.obj2pdf(user, input).then((e) => {
+                        resolve(e);
+                    }).catch((e) => {
+                        reject(e);
+                    });
+                }).catch((e) => {
+                    reject(e);
+                });
+            }).catch((e) => {
+                reject(e);
+            });
+        }).catch((e) => {
+            reject(e);
+        });
+    });
+}
+exports.rest_file_preview = rest_file_preview;

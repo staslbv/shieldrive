@@ -108,6 +108,15 @@ export interface IContentBuffer{
     data: string;
 }
 
+export interface IDecryptArgs{
+    fileName: string;
+    data: string;
+}
+
+export interface IConvertArgs{
+    data: IDecryptArgs;
+}
+
 export interface IFolderWorkerStatus
 {
     id:             number;

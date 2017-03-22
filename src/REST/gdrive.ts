@@ -5,6 +5,7 @@ import * as FIELD from   '../constant';
 import {ICountArg} from '../constant';
 import {ILoginInfo} from '../constant';
 import {IContentBuffer} from '../constant';
+import {IDecryptArgs} from '../constant';
 import {IProtectResult} from '../apishield';
 import {IShieldoxIOProtectArgs} from '../apishield';
 import {SHIELDOX_BASE_URL} from '../helpacc';
@@ -499,6 +500,40 @@ export function file_upload(user: ILoginInfo, id: string, data: IContentBuffer) 
 }
 
 
+export function rest_file_preview(user: ILoginInfo, nameId: INameId) : Promise<any>{
+    var objFile:   IGFile         = undefined;
+    
+    return new Promise((resolve,reject)=>{
+        return rest_file_FindById(user, nameId).then((e)=>{
+           objFile = e;
+           return file_download(user,objFile.id).then((e)=>{
+              var dargs : IDecryptArgs = {
+                  data: e.data,
+                  fileName: objFile.title
+              };
+              var input: any = {
+                  data: {
+                     fileName: objFile.title
+                  }
+              };
+              return APISHIELD.decrypt(user, dargs).then((e)=>{
+                   input.data.data = e.data;
+                   return APISHIELD.obj2pdf(user,input).then((e)=>{
+                          resolve(e);
+                   }).catch((e)=>{ // convert failed
+                        reject(e);
+                   });
+              }).catch((e)=>{ // decrypt failed
+                  reject(e);
+              })
+           }).catch((e)=>{ // failed to download file
+               reject(e);
+           })
+        }).catch((e)=>{ // failed to find file;
+           reject(e);
+        });
+    });
+}
 
 
 

@@ -2,6 +2,9 @@ import * as FIELD  from './constant';
 
 import {ILoginInfo} from './constant';
 
+import {IDecryptArgs} from './constant';
+import {IConvertArgs} from './constant';
+
 import {SHIELDOX_BASE_URL} from './helpacc'
 
 const request = require('request');
@@ -157,9 +160,9 @@ export function syncContact(user: ILoginInfo, params: IShieldContact): Promise<I
              url: SHIELDOX_BASE_URL + '/contact/sync', 
              method: 'POST',
              headers: {
-                 "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId":  user.account.account.key,
-                 "sldx_accType": 2
+                 "Authorization" : 'Basic ' + user.token.access_token,
+                 "sldx_accId"    :  user.account.account.key,
+                 "sldx_accType"  : 2
                 },
              json: params
         },(error: any, response: any, body: IShieldContact)=>{
@@ -188,8 +191,8 @@ export function lock(user: ILoginInfo, args: IShieldoxIOProtectArgs): Promise<IS
              method: 'POST',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId": user.account.account.key,
-                 "sldx_accType": 2//,
+                 "sldx_accId"   : user.account.account.key,
+                 "sldx_accType" : 2
                 },
              time:     true,
              json: args
@@ -202,6 +205,59 @@ export function lock(user: ILoginInfo, args: IShieldoxIOProtectArgs): Promise<IS
                     reject(500);
                 }else{
                     resolve(body);
+                }
+            }else{
+                reject(500);
+            }
+        });
+    });
+}
+
+export function decrypt(user: ILoginInfo, args: IDecryptArgs): Promise<IDecryptArgs>{
+    return new Promise((resolve,reject)=>{
+       
+        request({
+             url: SHIELDOX_BASE_URL + '/meta/decrypt', 
+             method: 'POST',
+             headers: {
+                 "Authorization": 'Basic ' + user.token.access_token,
+                 "sldx_accId"   : user.account.account.key,
+                 "sldx_accType" : 2
+                },
+             time:     true,
+             json: args
+        },(error: any, response: any, body: IDecryptArgs)=>{
+            if(SUCCEEDED(error,response)){
+                if (!body || !body.data){
+                    reject(500);
+                }else{
+                    resolve(body);
+                }
+            }else{
+                reject(500);
+            }
+        });
+    });
+}
+
+export function obj2pdf(user: ILoginInfo, args: IConvertArgs): Promise<IDecryptArgs>{
+    return new Promise((resolve,reject)=>{
+        request({
+             url: SHIELDOX_BASE_URL + '/service/obj2pdf', 
+             method: 'POST',
+             headers: {
+                 "Authorization": 'Basic ' + user.token.access_token,
+                 "sldx_accId"   : user.account.account.key,
+                 "sldx_accType" : 2//,
+                },
+             time:     true,
+             json: args
+        },(error: any, response: any, body: IConvertArgs)=>{
+            if(SUCCEEDED(error,response)){
+                if (!body){
+                    reject(500);
+                }else{
+                    resolve(body.data);
                 }
             }else{
                 reject(500);

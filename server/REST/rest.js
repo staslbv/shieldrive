@@ -85,6 +85,13 @@ class CRest {
                 return res.status(500).send();
             });
         });
+        this.app.post('/cloud/entity/preview', CRest.requireAuthorization, (req, res) => {
+            gdrive.rest_file_preview(req.user, req.body)
+                .then((e) => res.json(e))
+                .catch(() => {
+                return res.status(500).send();
+            });
+        });
         this.app.get('/cloud/file', CRest.requireAuthorization, (req, res) => {
             gdrive.list_files_scan(req.user, false, req.query.title)
                 .then((e) => res.json(_.groupBy(e.map((item) => {

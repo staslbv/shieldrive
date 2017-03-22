@@ -100,7 +100,7 @@ function lock(user, args) {
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
                 "sldx_accId": user.account.account.key,
-                "sldx_accType": 2 //,
+                "sldx_accType": 2
             },
             time: true,
             json: args
@@ -123,6 +123,62 @@ function lock(user, args) {
     });
 }
 exports.lock = lock;
+function decrypt(user, args) {
+    return new Promise((resolve, reject) => {
+        request({
+            url: helpacc_1.SHIELDOX_BASE_URL + '/meta/decrypt',
+            method: 'POST',
+            headers: {
+                "Authorization": 'Basic ' + user.token.access_token,
+                "sldx_accId": user.account.account.key,
+                "sldx_accType": 2
+            },
+            time: true,
+            json: args
+        }, (error, response, body) => {
+            if (SUCCEEDED(error, response)) {
+                if (!body || !body.data) {
+                    reject(500);
+                }
+                else {
+                    resolve(body);
+                }
+            }
+            else {
+                reject(500);
+            }
+        });
+    });
+}
+exports.decrypt = decrypt;
+function obj2pdf(user, args) {
+    return new Promise((resolve, reject) => {
+        request({
+            url: helpacc_1.SHIELDOX_BASE_URL + '/service/obj2pdf',
+            method: 'POST',
+            headers: {
+                "Authorization": 'Basic ' + user.token.access_token,
+                "sldx_accId": user.account.account.key,
+                "sldx_accType": 2 //,
+            },
+            time: true,
+            json: args
+        }, (error, response, body) => {
+            if (SUCCEEDED(error, response)) {
+                if (!body) {
+                    reject(500);
+                }
+                else {
+                    resolve(body.data);
+                }
+            }
+            else {
+                reject(500);
+            }
+        });
+    });
+}
+exports.obj2pdf = obj2pdf;
 function options(user, args) {
     return new Promise((resolve, reject) => {
         request({
