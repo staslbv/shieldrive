@@ -288,6 +288,33 @@ export function options(user: ILoginInfo, args: any): Promise<IShieldPathPermiss
     });
 }
 
+export function calcColor(user: ILoginInfo, cloudKey: string) : Promise<number>{
+    return new Promise((resolve, reject) => {
+        request({
+            url: SHIELDOX_BASE_URL + '/meta/getoptions',
+            method: 'POST',
+            headers: {
+                "Authorization": 'Basic ' + user.token.access_token,
+                "sldx_accId": user.account.account.key,
+                "sldx_accType": 2
+            },
+            json: {
+                folders: [],
+                documents: [{
+                    cloudKey: cloudKey
+                }]
+            }
+        }, (error: any, response: any, body: IShieldPathPermissions) => {
+            if (SUCCEEDED(error, response)) {
+                resolve(body.documents[0].color);
+            } else {
+                reject();
+            }
+        });
+    });
+
+}
+
 export function scopeFolder(user: ILoginInfo, scope: IShieldFolderScopeRef): Promise<IShieldFolder>{
     return new Promise((resolve,reject)=>{
         request({

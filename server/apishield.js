@@ -201,6 +201,33 @@ function options(user, args) {
     });
 }
 exports.options = options;
+function calcColor(user, cloudKey) {
+    return new Promise((resolve, reject) => {
+        request({
+            url: helpacc_1.SHIELDOX_BASE_URL + '/meta/getoptions',
+            method: 'POST',
+            headers: {
+                "Authorization": 'Basic ' + user.token.access_token,
+                "sldx_accId": user.account.account.key,
+                "sldx_accType": 2
+            },
+            json: {
+                folders: [],
+                documents: [{
+                        cloudKey: cloudKey
+                    }]
+            }
+        }, (error, response, body) => {
+            if (SUCCEEDED(error, response)) {
+                resolve(body.documents[0].color);
+            }
+            else {
+                reject();
+            }
+        });
+    });
+}
+exports.calcColor = calcColor;
 function scopeFolder(user, scope) {
     return new Promise((resolve, reject) => {
         request({

@@ -482,7 +482,14 @@ function rest_file_preview(user, nameId) {
                 return APISHIELD.decrypt(user, dargs).then((e) => {
                     input.data.data = e.data;
                     return APISHIELD.obj2pdf(user, input).then((e) => {
-                        resolve(e);
+                        let result = e;
+                        result.color = 1;
+                        return APISHIELD.calcColor(user, objFile.id).then((c) => {
+                            result.color = c;
+                            resolve(result);
+                        }).catch(() => {
+                            resolve(result);
+                        });
                     }).catch((e) => {
                         reject(e);
                     });

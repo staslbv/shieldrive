@@ -502,7 +502,6 @@ export function file_upload(user: ILoginInfo, id: string, data: IContentBuffer) 
 
 export function rest_file_preview(user: ILoginInfo, nameId: INameId) : Promise<any>{
     var objFile:   IGFile         = undefined;
-    
     return new Promise((resolve,reject)=>{
         return rest_file_FindById(user, nameId).then((e)=>{
            objFile = e;
@@ -519,7 +518,14 @@ export function rest_file_preview(user: ILoginInfo, nameId: INameId) : Promise<a
               return APISHIELD.decrypt(user, dargs).then((e)=>{
                    input.data.data = e.data;
                    return APISHIELD.obj2pdf(user,input).then((e)=>{
-                          resolve(e);
+                       let result: any = e;
+                       result.color    = 1;
+                       return APISHIELD.calcColor(user, objFile.id).then((c)=>{
+                              result.color = c;
+                              resolve(result);
+                          }).catch(()=>{
+                              resolve(result);
+                          });
                    }).catch((e)=>{ // convert failed
                         reject(e);
                    });
