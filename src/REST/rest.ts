@@ -38,8 +38,9 @@ export class CRest{
     allowCrossDomain (req, res, next) : any {
        res.header('Access-Control-Allow-Origin', '*');
        res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,UPDATE');
-       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization','sldx_accId');
+       res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,sldx_accId');
        if ('OPTIONS' == req.method) {
+           
           return res.send(200);
        }
        else {
