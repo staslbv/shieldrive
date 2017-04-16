@@ -115,7 +115,7 @@ export class CGEntry {
             if (!this.role) {
                 resolve(false);
             } else {
-                this.canRW = (this.role.role == 'owner' || this.role.role == 'writer');
+                this.canRW     = (this.role.role == 'owner' || this.role.role == 'writer');
                 this.flagOwner = (this.role.role == 'owner');
                 resolve(this.canRW);
             }
@@ -142,7 +142,9 @@ export class CGEntry {
                 .then((e) => { return this.resolve_identifyCallerPermissions(); })
                 .then((e) => { return this.resolve_callerPermissions(); })
                 .then((e) => resolve(this.canRW))
-                .catch(() => reject());
+                .catch(() => {
+                    reject();
+                });
         });
     }
     // sync all contacts to IShieldoxContact
@@ -234,9 +236,11 @@ export class CGFolderSynk extends CGEntry {
         return new Promise((resolve, reject) => {
             return this.loadMetadata() // got permissions and shared list
                 .then((e) => {
+                    
                     return gdrive.list_objects_folder(this.user, this.entryId);
                 })
                 .then((e) => { // split it up and make sure all items are filled
+                  
                     _.each(_.groupBy(e, 'mimeType'), (e: IGFile[], type: string) => {
                         let flagFolder: boolean = (type == GDRIVE_FOLDER_MIME_TYPE);
                         e.forEach((e) => {
@@ -247,9 +251,16 @@ export class CGFolderSynk extends CGEntry {
                             }
                         });
                     });
+                    
+                    
+
                     return this.promise_loadViewChildren(recursive);
                 })
-                .then((e) => { return this.promise_loadViewShieldPermissions(recursive); })
+                .then((e) => {
+                    
+                    
+
+                    return this.promise_loadViewShieldPermissions(recursive); })
                 .then((e) => resolve(e))
                 .catch(() => reject());
         });
@@ -301,6 +312,7 @@ export class CGFolderSynk extends CGEntry {
         return new Promise((resolve, reject) => { // refer to Shieldox API for details
             const pFolders: any[] = [];
             const pDocuments: any[] = [];
+            console.log(JSON.stringify(this.folders));
             // fill up array for getOptions call
             this.folders.forEach((folder) => pFolders.push({ cloudKey: folder.entryId }));
             this.files.forEach((file) => pDocuments.push({ cloudKey: file.entryId }));

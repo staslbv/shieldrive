@@ -36,7 +36,7 @@ export class CDb{
           
              this.sequelize = new Sequelize(undefined,undefined,undefined,{
                     "dialect": "sqlite",
-                    "storage": __dirname + "/localdbv3.sqlite",
+                    "storage": __dirname + "/localdbv4.sqlite",
                     "logging": false
              });
             
@@ -75,6 +75,7 @@ export class CDb{
     }
 
     constructor(reset: boolean){
+       
         this.FLAG_RESET_SCHEMA = reset;
 
     }

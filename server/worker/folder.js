@@ -121,7 +121,9 @@ class CGEntry {
                 .then((e) => { return this.resolve_identifyCallerPermissions(); })
                 .then((e) => { return this.resolve_callerPermissions(); })
                 .then((e) => resolve(this.canRW))
-                .catch(() => reject());
+                .catch(() => {
+                reject();
+            });
         });
     }
     // sync all contacts to IShieldoxContact
@@ -214,7 +216,9 @@ class CGFolderSynk extends CGEntry {
                 });
                 return this.promise_loadViewChildren(recursive);
             })
-                .then((e) => { return this.promise_loadViewShieldPermissions(recursive); })
+                .then((e) => {
+                return this.promise_loadViewShieldPermissions(recursive);
+            })
                 .then((e) => resolve(e))
                 .catch(() => reject());
         });
@@ -261,6 +265,7 @@ class CGFolderSynk extends CGEntry {
         return new Promise((resolve, reject) => {
             const pFolders = [];
             const pDocuments = [];
+            console.log(JSON.stringify(this.folders));
             // fill up array for getOptions call
             this.folders.forEach((folder) => pFolders.push({ cloudKey: folder.entryId }));
             this.files.forEach((file) => pDocuments.push({ cloudKey: file.entryId }));
