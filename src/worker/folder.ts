@@ -321,7 +321,7 @@ export class CGFolderSynk extends CGEntry {
                 folders: pFolders,
                 documents: pDocuments
             }).then((e) => { // fill up paths and menu options based on cloud permitions
-                var a = e.documents.map((e) => { return _.pick(e, 'color', 'cloudKey','threadId'); });
+                var a = e.documents.map((e) => { return _.pick(e, 'color', 'cloudKey','threadId','objectId'); });
                 
                 var b = e.folders.map((e) => { return _.pick(e, 'color', 'cloudKey'); });
                 a.forEach((e) => {

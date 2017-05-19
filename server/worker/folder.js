@@ -274,7 +274,7 @@ class CGFolderSynk extends CGEntry {
                 folders: pFolders,
                 documents: pDocuments
             }).then((e) => {
-                var a = e.documents.map((e) => { return _.pick(e, 'color', 'cloudKey', 'threadId'); });
+                var a = e.documents.map((e) => { return _.pick(e, 'color', 'cloudKey', 'threadId', 'objectId'); });
                 var b = e.folders.map((e) => { return _.pick(e, 'color', 'cloudKey'); });
                 a.forEach((e) => {
                     this.files.forEach((file) => {
