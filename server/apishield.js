@@ -19,6 +19,7 @@ function syncFolder(user, id, name) {
             folderId: id,
             name: name
         };
+        console.log('sync folder : ' + name);
         request({
             url: helpacc_1.SHIELDOX_BASE_URL + '/account/CreateFolder',
             method: 'POST',

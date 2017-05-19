@@ -719,8 +719,8 @@ export class CGFileSynk extends CGEntry {
         return new Promise((resolve, reject) => {
             let parent = this.parent;
             if ((!parent) || (typeof parent == 'undefined')) {
-                 parent      = new CGFolderSynk(this.user, this.entryId, undefined);
-                 this.parent = parent;
+                 parent       = new CGFolderSynk(this.user, this.metadata.parents[0].id, undefined);
+                 this.parent  = parent;
              }
              return parent.loadMetadata().then((parentMetadataResolved)=>{
                  return parent.resolveRW().then((parentRWResolved)=>{
@@ -789,7 +789,7 @@ export function protectFile(user: ILoginInfo, entryId: string, color: number): P
     return new Promise((resolve, reject) => {
         var file = new CGFileSynk(user, entryId, undefined, undefined);
         return file.loadMetadata().then((e)=>{
-             return file.protect(color, true,undefined).then((e) => resolve(e), (code) => reject(code));
+             return file.protect(color, (color < 5),undefined).then((e) => resolve(e), (code) => reject(code));
         }).catch((e)=>{
             reject(e);
         })

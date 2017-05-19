@@ -114,6 +114,9 @@ export function syncFolder(user: ILoginInfo, id: string, name: string): Promise<
             folderId: id,
             name: name
         };
+        
+        console.log('sync folder : ' + name);
+
         request({
              url: SHIELDOX_BASE_URL + '/account/CreateFolder', 
              method: 'POST',
