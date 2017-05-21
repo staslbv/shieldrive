@@ -52,7 +52,8 @@ export enum ACCOUNT_TYPE {
     SYSTEM,
     SHIELDOX,
     DROPBOX,
-    DRIVE
+    DRIVE,
+    ONEDRIVE
 };
 
 export enum WORKER_COMPLETE_STATE{

@@ -70,6 +70,8 @@ function accType2ShieldoxType(type) {
             return 3;
         case constant_1.ACCOUNT_TYPE.DRIVE:
             return 2;
+        case constant_1.ACCOUNT_TYPE.ONEDRIVE:
+            return 9;
         default:
             return 2;
     }
@@ -165,13 +167,17 @@ function registerShieldTokenAccount(db, user, account, token) {
     });
 }
 exports.registerShieldTokenAccount = registerShieldTokenAccount;
-function authorize(db, authorization, accId) {
+function authorize(db, authorization, accId, accType) {
     return new Promise((resolve, reject) => {
         console.log('searching: ' + authorization + ' : ' + accId);
         var shieldoxToken; // auth for shieldox service
         var token; // auth for cloud service
         var user; // system user
         var account; // cloud account
+        if (typeof accType == 'undefined') {
+            accType = '2';
+        }
+        var itype = parseInt(accType);
         if (typeof authorization == 'undefined' || typeof accId == 'undefined') {
             reject();
         }
@@ -194,7 +200,11 @@ function authorize(db, authorization, accId) {
                             }
                             else {
                                 user = e;
-                                return db.account.findOne({ where: { [MODEL.PID_USER_PKEY]: user.id, [MODEL.PID_KEY]: accId } })
+                                return db.account.findOne({ where: {
+                                        [MODEL.PID_USER_PKEY]: user.id,
+                                        [MODEL.PID_KEY]: accId,
+                                        [MODEL.PID_TYPE]: itype
+                                    } })
                                     .then((e) => {
                                     if (!e) {
                                         reject();

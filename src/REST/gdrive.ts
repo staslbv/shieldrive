@@ -30,7 +30,7 @@ export interface IUsersPermissions{
 };
 
 export interface IGUserPermission{
-    id: string; // me
+    id: string;    // me
     role: string; // writer, owner
 }
 

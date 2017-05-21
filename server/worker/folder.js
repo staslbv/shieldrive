@@ -478,7 +478,7 @@ class CGFileSynk extends CGEntry {
         return new Promise((resolve, reject) => {
             return this.toShieldPolicyScope(this.privateContacts)
                 .then((e) => {
-                return apishield.scopeDocument(this.user, this.contentIoArgs.objectId, e);
+                return apishield.scopeDocument(this.user, this.contentIoArgs.key, e);
             })
                 .then((e) => resolve(e))
                 .catch((e) => reject(e));
@@ -541,6 +541,7 @@ class CGFileSynk extends CGEntry {
                     }
                 }
             })
+                .then((e) => { return this.updateSharedContacts(); })
                 .then((e) => {
                 console.log('PROTECT ACCEPTED, Notifieng: ' + this.metadata.title);
                 delete this.contentIoArgs.data;
@@ -697,7 +698,8 @@ class CGFileSynk extends CGEntry {
             path: this.metadata.title,
             cloudKey: this.metadata.id,
             folderId: folderId,
-            size: this.metadata.fileSize
+            size: this.metadata.fileSize,
+            key: undefined
         };
     }
     constructor(user, entryId, metadata, parent) {

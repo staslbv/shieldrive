@@ -49,6 +49,7 @@ export interface IShieldoxIOProtectArgs{
     cloudKey: string;
     folderId: string;
     size:     number;
+    key:      string;
 }
 
 export interface IShieldPathPermissions{

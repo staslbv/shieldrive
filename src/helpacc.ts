@@ -12,6 +12,7 @@ import  *  as MODEL from   './constant';
 const request           = require('request');
 const cryptojs          = require('crypto-js');
 
+
 export const SHIELDOX_BASE_URL : string = "https://api.shieldox.com/api";
 
 export function registerUser(db: CDb, user: IUser): Promise<IUser>{
@@ -81,6 +82,8 @@ export function accType2ShieldoxType(type: ACCOUNT_TYPE): number {
           return 3;
        case ACCOUNT_TYPE.DRIVE:
           return 2;
+       case ACCOUNT_TYPE.ONEDRIVE:
+          return 9;
        default:
           return 2;
    }
@@ -177,13 +180,18 @@ export function registerShieldTokenAccount(db: CDb, user: IUser, account: IAccou
 }
 
 
-export function authorize(db: CDb, authorization: string, accId: string): Promise<ILoginInfo>{
+export function authorize(db: CDb, authorization: string, accId: string, accType: string): Promise<ILoginInfo>{
     return new Promise((resolve,reject)=>{
         console.log('searching: ' + authorization + ' : ' + accId);
         var shieldoxToken: IToken;   // auth for shieldox service
         var token:         IToken;   // auth for cloud service
         var user:          IUser;    // system user
         var account:       IAccount; // cloud account
+        if (typeof accType == 'undefined'){
+            accType = '2';
+        }
+        var itype: ACCOUNT_TYPE = parseInt(accType);
+
         if (typeof authorization == 'undefined' || typeof accId == 'undefined'){
             reject();
         }else{
@@ -197,7 +205,11 @@ export function authorize(db: CDb, authorization: string, accId: string): Promis
                       return db.user.findOne({where:{[MODEL.PID_ID]:e.userId}}).then((e:IUser)=>{
                           if (!e){ reject(); // can not locate parent user
                           }else{ user = e;
-                              return db.account.findOne({where:{[MODEL.PID_USER_PKEY]:user.id,[MODEL.PID_KEY]:  accId}})
+                              return db.account.findOne({where:{
+                                  [MODEL.PID_USER_PKEY]:user.id,
+                                  [MODEL.PID_KEY]:  accId,
+                                  [MODEL.PID_TYPE]: itype
+                                }})
                               .then((e: IAccount)=>{
                                   if (!e){ reject();
                                   }else{ account = e;
