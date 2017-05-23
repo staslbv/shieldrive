@@ -1,6 +1,7 @@
 "use strict";
 const FIELD = require("../constant");
 const gdrive = require("../REST/gdrive");
+const onedrive = require("../REST/onedrive");
 const apishield = require("../apishield");
 const bkworker_1 = require("./bkworker");
 const rest_1 = require("../REST/rest");
@@ -51,9 +52,16 @@ class CGEntry {
                 resolve(this.metadata);
             }
             else {
-                return gdrive.list_file_metadata(this.user, this.entryId)
-                    .then((e) => resolve((this.metadata = e)))
-                    .catch(() => reject());
+                switch (this.user.account.account.type) {
+                    case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                        return onedrive.list_file_metadata(this.user, this.entryId)
+                            .then((e) => resolve((this.metadata = e)))
+                            .catch(() => reject());
+                    default:
+                        return gdrive.list_file_metadata(this.user, this.entryId)
+                            .then((e) => resolve((this.metadata = e)))
+                            .catch(() => reject());
+                }
             }
         });
     }
@@ -64,9 +72,16 @@ class CGEntry {
                 resolve(this.permissions);
             }
             else {
-                return gdrive.rest_file_contacts(this.user, this.entryId)
-                    .then((e) => { resolve((this.permissions = e)); })
-                    .catch(() => reject());
+                switch (this.user.account.account.type) {
+                    case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                        return onedrive.rest_file_contacts(this.user, this.entryId)
+                            .then((e) => { resolve((this.permissions = e)); })
+                            .catch(() => reject());
+                    default:
+                        return gdrive.rest_file_contacts(this.user, this.entryId)
+                            .then((e) => { resolve((this.permissions = e)); })
+                            .catch(() => reject());
+                }
             }
         });
     }
@@ -93,8 +108,11 @@ class CGEntry {
                 resolve(false);
             }
             else {
-                this.canRW = (this.role.role == 'owner' || this.role.role == 'writer');
-                this.flagOwner = (this.role.role == 'owner');
+                this.canRW = (this.role.role == 'owner' ||
+                    this.role.role == 'writer' ||
+                    this.role.role == 'write' ||
+                    this.role.role == 'sp.owner');
+                this.flagOwner = (this.role.role == 'owner' || this.role.role == 'sp.owner');
                 resolve(this.canRW);
             }
         });
@@ -200,7 +218,12 @@ class CGFolderSynk extends CGEntry {
         return new Promise((resolve, reject) => {
             return this.loadMetadata() // got permissions and shared list
                 .then((e) => {
-                return gdrive.list_objects_folder(this.user, this.entryId);
+                switch (this.user.account.account.type) {
+                    case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                        return onedrive.list_objects_folder(this.user, this.entryId);
+                    default:
+                        return gdrive.list_objects_folder(this.user, this.entryId);
+                }
             })
                 .then((e) => {
                 _.each(_.groupBy(e, 'mimeType'), (e, type) => {
@@ -537,7 +560,12 @@ class CGFileSynk extends CGEntry {
                     }
                     else {
                         console.log('Calling upload ...');
-                        return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
+                        switch (this.user.account.account.type) {
+                            case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                                return onedrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
+                            default:
+                                return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
+                        }
                     }
                 }
             })
@@ -612,7 +640,12 @@ class CGFileSynk extends CGEntry {
                     reject(401);
                 }
                 else {
-                    return gdrive.file_download(this.user, this.metadata.id);
+                    switch (this.user.account.account.type) {
+                        case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                            return onedrive.file_download(this.user, this.metadata.id);
+                        default:
+                            return gdrive.file_download(this.user, this.metadata.id);
+                    }
                 }
             })
                 .then((e) => {

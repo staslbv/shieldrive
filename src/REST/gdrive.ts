@@ -95,6 +95,8 @@ function isValidMIME_Type(mime: string): boolean{
       'msword',
       'ms-excel',
       'ms-powerpoint',
+      'officedocument.spreadsheetml',
+      'wordprocessingml.document',
       'application/pdf',
       'application/x-pdf',
       'application/vnd.pdf',
@@ -108,6 +110,7 @@ function isValidMIME_Type(mime: string): boolean{
           }
       }
   }
+  // application/octet-stream
   return false;
 }
 

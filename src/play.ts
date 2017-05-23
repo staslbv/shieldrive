@@ -8,7 +8,7 @@ var request = require('request');
 
 const url1: string         = "mongodb://probot-long-term-memory:4C6km8d6Na8wOCQ9mYp4BYMpajfHGztjwj7bVADs0xWhEyMCAA8a09hACnIJ3LAsGGZxNiWCjc5nxZQK8RCMNA==@probot-long-term-memory.documents.azure.com:10250/main?3t.connection.name=Probot+Long-Term+Memory&3t.uriVersion=2&3t.certificatePreference=RootCACert:accept_any&3t.connectionMode=direct&3t.useClientCertPassword=false&readPreference=primary&ssl=true";
 
-const token:string         = 'EwAYA8l6BAAU7p9QDpi/D7xJLwsTgCg3TskyTaQAATaPvmTwjiXd5nWytHHzCxGF4OJi4JXplbOxFFdPxQ/HgOUvx1BVmd1TlC6QQz0NF/bZy1SdPlfIJWFkFF0%2b9OR95dGhDgIIkto2GRoavthXlb6uEOWB7Mr401NkthTh6DLckleKVAt5pCnqmj7f1dgohVGy6/JERtKWEey/2u2rqhUblaLyh0EZaXumbM/S4zVrkJ7gsT6XK3JLN5WUhj8QYAQOYSGZStmLZpooNq8efBTWtbtfSoD7T83t3nwHI0SyP3L8rPA57SNgR9Ef/gP6p117LYShfwsZSnikEQ6RjCS/umcrI7J0eHXw0KvLWofeOLFF4iMG0YRFvJxRol8DZgAACAIkl%2bR67rzm6AHj1cJwLIeFdug%2b9BJzQ%2bD8b4HuvOh1LGSU59Yq31EGqN3gCEpIAlGA4OKXT1nwG12jSx5yk0uGdKPIRpM3xb%2bkVq7Ljw0kZP3OVL1PEqctdYOXp9/kbIxdfCtCz7gM9L/XX32LP3b3qHlhNOoX8AmsgzUSBvF7JJDCaN5G1vY/Y6n97xa/G%2bop%2bv02yNs8BMh6RSOaUA8doge40XnOsqvtqfsyySmb9M1WGqBrdGZaIrrvEsGjt3P8A5yUZ5i6xngH519BYjUIqdr56ob0PYbmLVxqiXbKngYk98QTL30FQ2WJN5yjG9Sh63o%2boP2bLQ8ySJUZgM%2b1tVF7dnGqvL2/1akx%2b0d1UT3g25iUY2Q%2b2gEM65pvWC1bPxyebDDfhQs/sn9TcaMCo2TEmdTrD/33MWy12G%2b4BebcC%2bhLsyhm0IVp6mp8UKeiTHwEh6do2GByQF3EpEbW2YhE3oluNfqz1nCuUZvbty%2bfIAvpgTKowOB0NDCkgFZ2jvscKjiycQucbF7tD%2bYCl3vDwTJc6Fa7l1ZVmDCK2dlKM29VN%2bwZCoCDh/xeZLRKd8WgE0%2ba7KnpDpHex4NGozdf5DTLMTiap6faNGYH6/SsISlPrODf6wc%2bZIDe9TQvy6eBgyfKDsKp5WFHDTUdGBYC';
+const token:string         = 'EwAYA8l6BAAU7p9QDpi/D7xJLwsTgCg3TskyTaQAAcX%2bqJlXoRamRt1u3OLb%2b0YliL3skZtXtqzL%2bi%2bygLMB%2bdzbnElEfhSUhsVDPzXOvSrma%2b2y3%2bcSRQb5Wv7LILJkQ1CToqkPj08rHrWuv5e4/9B3z1uSAz8WfcBLUENVl1/ORzCOW%2b3lElsDu6dcSMxrrpus71K1b5OnFZ0IDwldyiBBytcHKerGc2TdNQ%2bsxRkJBS8iDCJ%2bquUI4IHJBj4j7hJd5vwPIQmYFwASz0sAEIrg%2bOjr6uN5NDhqqimk35MCQFfy3MfzXJ7jJb5atA67utz%2byRPIEQvKY6%2bKi/sdyc0flyPreI1RwLgaPcgxeJlmmxp8E8ZSkyfNjPC%2bEJ8DZgAACG44tEpmd%2bAR6AHZvf8EAx7EmzdfZ7jR83Dx%2bc/nuLNc6E9JBEG7PRYPrVQxXauFYRRGMi7eWHo7/ry2pRiH4IHbk3CEbn37cmlhoftAtAnPGpeM1K7Bj7RAUYiEpLa7WEZmffvnThqVrZ6Z7iYrn8tWaf6IFbYA2sU2EPPFHoo/0%2bSvxLLFTLgh9bF5ccJDf9p/1DnCBmw6d58TMHElvzQFvVn8Q2X4p2DVz/iT7cYFAdS5ifMXLgz29zQw%2bxFDpnNecbMivRbyoIRLSfd3mx0RWeI3Ns1rlwRp6OLhpdvx7TY9x9tI5qyvig1OY4j0qdwzlHb20awh3OqL9N2fPJll0ZPY2u2AqTY9APv8ScNkB1okYtaC3qHB4J8XsvolA1FYVqLjNaytwE1mtylhgmezmX4fgVsQK2iOuLVgjA9Yl5/RIH3iie4uMmfs7dgDAWUsTF1bCb6EvKc5/F/gy6qWeOUi5nzVq6yj/5ujC3wyAnQeiTTR155wBDIIZnDSVPQ60TaKSy3%2bUx2Cs1Zh7pjbobhRaipjgpiEc4cttUpTHKTWKURxHyTvlQTaWNyxRlgExy1v3BkQYywTU%2b8qkSXyLcFt75vLv1ro9UOwqQiGg8Xz7yno0QiHxCvu6LI0JfG3OfqEhgkCfbKnUZvgAlxsyxYC';
 
 const user_id:string       = 'AAAAAAAAAAAAAAAAAAAAACdFQVo7MMzgoPhU4CcrX3g';
 
@@ -29,17 +29,18 @@ console.log(typeof value +  ' : ' + value );
 
 //downloadFile();
 //getItemPermissions();
-//getFolderChildrenById();
-getUserProfile();
+getFolderChildrenById();
+//getUserProfile();
 //getUserDrives();
 // works
 function getUserProfile(): void{
-   
 
+   
+console.log('48828568e1b65d1f');
      request({ // userPrincipalName 
                // "id": "2343468607d76c9b",
                // "mail": null
-             url: 'https://graph.microsoft.com/v1.0/users/' + user_id, 
+             url: 'https://graph.microsoft.com/v1.0/users/' + 'lizy.pitman@gmail.com',//user_id, 
              method: 'GET',
              headers: {
                  "Authorization": 'Bearer ' + token
@@ -55,7 +56,7 @@ function getUserDrives(): void{
      request({ // userPrincipalName 
                // "id": "2343468607d76c9b",
                // "mail": null
-             url: 'https://graph.microsoft.com/v1.0/drives/' + '2343468607d76c9b', 
+             url: 'https://graph.microsoft.com/v1.0/drives/' + '48828568e1b65d1f', 
              method: 'GET',
              headers: {
                  "Authorization": 'Bearer ' + token
@@ -72,7 +73,8 @@ function getFolderChildrenById(): void{
      request({ // userPrincipalName 
                // "id": "2343468607d76c9b",
                // "mail": null
-             url: 'https://graph.microsoft.com/v1.0/drive/items/root/children', 
+              url: 'https://graph.microsoft.com/v1.0/drive/items/48828568E1B65D1F%21189', 
+             //url: 'https://graph.microsoft.com/v1.0/drive/items/root/children', 
              method: 'GET',
              headers: {
                  "Authorization": 'Bearer ' + token
@@ -89,7 +91,8 @@ function getItemPermissions(): void{
      request({ // userPrincipalName 
                // "id": "2343468607d76c9b",
                // "mail": null
-             url: 'https://graph.microsoft.com/v1.0/drive/items/2343468607D76C9B%21106/permissions', 
+               
+             url: 'https://graph.microsoft.com/v1.0/drive/items/48828568E1B65D1F%21189/permissions', 
              method: 'GET',
              headers: {
                  "Authorization": 'Bearer ' + token

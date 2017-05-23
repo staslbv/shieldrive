@@ -53,7 +53,7 @@ export enum ACCOUNT_TYPE {
     SHIELDOX,
     DROPBOX,
     DRIVE,
-    ONEDRIVE
+    ONEDRIVE = 9
 };
 
 export enum WORKER_COMPLETE_STATE{

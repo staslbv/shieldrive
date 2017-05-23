@@ -1,6 +1,7 @@
 
 import * as FIELD from '../constant';
 import * as gdrive from '../REST/gdrive';
+import * as onedrive from '../REST/onedrive';
 import * as apishield from '../apishield';
 import { ILoginInfo } from '../constant';
 import { IGFile } from '../REST/gdrive';
@@ -75,9 +76,17 @@ export class CGEntry {
             if (typeof this.metadata == 'object') {
                 resolve(this.metadata);
             } else {
-                return gdrive.list_file_metadata(this.user, this.entryId)
-                    .then((e) => resolve((this.metadata = e)))
-                    .catch(() => reject());
+                switch (this.user.account.account.type) 
+                {
+                    case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                        return onedrive.list_file_metadata(this.user, this.entryId)
+                            .then((e) => resolve((this.metadata = e)))
+                            .catch(() => reject());
+                    default:
+                        return gdrive.list_file_metadata(this.user, this.entryId)
+                            .then((e) => resolve((this.metadata = e)))
+                            .catch(() => reject());
+                }
             }
         });
     }
@@ -88,9 +97,16 @@ export class CGEntry {
             if (typeof this.permissions == 'object') {
                 resolve(this.permissions);
             } else {
-                return gdrive.rest_file_contacts(this.user, this.entryId)
-                    .then((e) => { resolve((this.permissions = e)); })
-                    .catch(() => reject());
+                switch (this.user.account.account.type) {
+                    case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                     return onedrive.rest_file_contacts(this.user, this.entryId)
+                            .then((e) => { resolve((this.permissions = e)); })
+                            .catch(() => reject());
+                    default:
+                        return gdrive.rest_file_contacts(this.user, this.entryId)
+                            .then((e) => { resolve((this.permissions = e)); })
+                            .catch(() => reject());
+                }
             }
         });
     }
@@ -115,8 +131,12 @@ export class CGEntry {
             if (!this.role) {
                 resolve(false);
             } else {
-                this.canRW     = (this.role.role == 'owner' || this.role.role == 'writer');
-                this.flagOwner = (this.role.role == 'owner');
+                this.canRW = (
+                    this.role.role == 'owner' || 
+                    this.role.role == 'writer'|| 
+                    this.role.role == 'write'|| 
+                    this.role.role == 'sp.owner');
+                this.flagOwner = (this.role.role == 'owner' || this.role.role == 'sp.owner');
                 resolve(this.canRW);
             }
         });
@@ -236,11 +256,14 @@ export class CGFolderSynk extends CGEntry {
         return new Promise((resolve, reject) => {
             return this.loadMetadata() // got permissions and shared list
                 .then((e) => {
-                    
-                    return gdrive.list_objects_folder(this.user, this.entryId);
+                    switch (this.user.account.account.type) {
+                        case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                            return onedrive.list_objects_folder(this.user, this.entryId);
+                        default:
+                            return gdrive.list_objects_folder(this.user, this.entryId);
+                    }
                 })
                 .then((e) => { // split it up and make sure all items are filled
-                  
                     _.each(_.groupBy(e, 'mimeType'), (e: IGFile[], type: string) => {
                         let flagFolder: boolean = (type == GDRIVE_FOLDER_MIME_TYPE);
                         e.forEach((e) => {
@@ -251,15 +274,9 @@ export class CGFolderSynk extends CGEntry {
                             }
                         });
                     });
-                    
-                    
-
                     return this.promise_loadViewChildren(recursive);
                 })
                 .then((e) => {
-                    
-                    
-
                     return this.promise_loadViewShieldPermissions(recursive); })
                 .then((e) => resolve(e))
                 .catch(() => reject());
@@ -599,7 +616,12 @@ export class CGFileSynk extends CGEntry {
                             resolve(this.contentIoArgs);
                         } else {
                              console.log('Calling upload ...');
-                            return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
+                             switch (this.user.account.account.type) {
+                                 case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                                     return onedrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
+                                 default:
+                                     return gdrive.file_upload(this.user, this.metadata.id, this.contentBuffer);
+                             }
                         }
                     }
                 })
@@ -674,7 +696,12 @@ export class CGFileSynk extends CGEntry {
                         console.log('REJECTED loadIoDataAndGetStatus:  ROLE IS NULL');
                         reject(401);
                     } else {
-                        return gdrive.file_download(this.user, this.metadata.id);
+                        switch (this.user.account.account.type) {
+                            case FIELD.ACCOUNT_TYPE.ONEDRIVE:
+                                return onedrive.file_download(this.user, this.metadata.id);
+                            default:
+                                return gdrive.file_download(this.user, this.metadata.id);
+                        }
                     }
                 })
                 .then((e) => {

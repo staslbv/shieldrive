@@ -40,6 +40,8 @@ function isValidMIME_Type(mime) {
         'msword',
         'ms-excel',
         'ms-powerpoint',
+        'officedocument.spreadsheetml',
+        'wordprocessingml.document',
         'application/pdf',
         'application/x-pdf',
         'application/vnd.pdf',
@@ -53,6 +55,7 @@ function isValidMIME_Type(mime) {
             }
         }
     }
+    // application/octet-stream
     return false;
 }
 function rest_list_files_scan(user, flagFolder, buffer, title, token) {

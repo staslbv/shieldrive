@@ -3,8 +3,10 @@ const express = require("express");
 const parserBody = require("body-parser");
 const _ = require("underscore");
 const gdrive = require("./gdrive");
+const onedrive = require("./onedrive");
 const acchelp = require("../helpacc");
 const worker = require("../worker/folder");
+const FIELD = require("../constant");
 class CRest {
     Listen(port) {
         this.PORT = port;
@@ -16,7 +18,7 @@ class CRest {
         });
     }
     static requireAuthorization(req, res, next) {
-        acchelp.authorize(CRest.pData, req.get('Authorization'), req.get('sldx_accId'))
+        acchelp.authorize(CRest.pData, req.get('Authorization'), req.get('sldx_accId'), req.get('sldx_accType'))
             .then((e) => {
             req.user = e;
             next();
@@ -28,7 +30,7 @@ class CRest {
     allowCrossDomain(req, res, next) {
         res.header('Access-Control-Allow-Origin', '*');
         res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,UPDATE');
-        res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,sldx_accId');
+        res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,sldx_accId', 'sldx_accType');
         if ('OPTIONS' == req.method) {
             return res.send(200);
         }
@@ -140,17 +142,35 @@ class CRest {
                 return res.status(code).send();
             });
         });
+        // ONE DRIVE SUPPORT
         this.app.get('/cloud/contact/:id', CRest.requireAuthorization, (req, res) => {
-            gdrive.rest_file_contacts(req.user, req.params.id)
-                .then((e) => res.json(_.groupBy(e, 'role')))
-                .catch(() => {
-                return res.status(500).send();
-            });
+            if (req.user.account.account.type == FIELD.ACCOUNT_TYPE.DRIVE) {
+                gdrive.rest_file_contacts(req.user, req.params.id)
+                    .then((e) => res.json(_.groupBy(e, 'role')))
+                    .catch(() => {
+                    return res.status(500).send();
+                });
+            }
+            else {
+                onedrive.rest_file_contacts(req.user, req.params.id)
+                    .then((e) => res.json(_.groupBy(e, 'role')))
+                    .catch(() => {
+                    return res.status(500).send();
+                });
+            }
         });
+        // ONE DRIVE SUPPORT
         this.app.get('/cloud/metadata/:id', CRest.requireAuthorization, (req, res) => {
-            gdrive.list_file_metadata(req.user, req.params.id)
-                .then((e) => res.json(e))
-                .catch(() => { return res.status(500).send(); });
+            if (req.user.account.account.type == FIELD.ACCOUNT_TYPE.DRIVE) {
+                gdrive.list_file_metadata(req.user, req.params.id)
+                    .then((e) => res.json(e))
+                    .catch(() => { return res.status(500).send(); });
+            }
+            else {
+                onedrive.list_file_metadata(req.user, req.params.id)
+                    .then((e) => res.json(e))
+                    .catch(() => { return res.status(500).send(); });
+            }
         });
         this.app.get('/cloud/file/content/:id', CRest.requireAuthorization, (req, res) => {
             gdrive.file_download(req.user, req.params.id)
@@ -163,6 +183,9 @@ class CRest {
                 .catch(() => { return res.status(500).send(); });
         });
         this.app.get('/cloud/file/:id/protect/:color', CRest.requireAuthorization, (req, res) => {
+            console.log('user auth');
+            console.log(JSON.stringify(req.user.account.account, null, 4));
+            console.log(req.params.id);
             worker.protectFile(req.user, req.params.id, parseInt(req.params.color))
                 .then((e) => res.json(e))
                 .catch((e) => { return res.status(500).send(); });
