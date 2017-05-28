@@ -51,9 +51,8 @@ export class ICountArg{
 export enum ACCOUNT_TYPE {
     SYSTEM,
     SHIELDOX,
-    DROPBOX,
-    DRIVE,
-    ONEDRIVE = 9
+    DRIVE    = 5,
+    ONEDRIVE = 7
 };
 
 export enum WORKER_COMPLETE_STATE{

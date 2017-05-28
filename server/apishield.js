@@ -1,6 +1,7 @@
 "use strict";
 const helpacc_1 = require("./helpacc");
 const request = require('request');
+const cryptojs = require('crypto-js');
 function SUCCEEDED(error, response) {
     if (null == response || typeof response == 'undefined') {
         return false;
@@ -12,6 +13,10 @@ function SUCCEEDED(error, response) {
     return false;
 }
 exports.SUCCEEDED = SUCCEEDED;
+function get_accId(user) {
+    return ('0.0.' + user.account.account.type + '.' + cryptojs.MD5(user.account.account.key).toString());
+}
+exports.get_accId = get_accId;
 function syncFolder(user, id, name) {
     return new Promise((resolve, reject) => {
         const params = {
@@ -20,17 +25,19 @@ function syncFolder(user, id, name) {
             name: name
         };
         console.log('sync folder : ' + name);
+        console.log(JSON.stringify(user, null, 4));
         request({
             url: helpacc_1.SHIELDOX_BASE_URL + '/account/CreateFolder',
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             json: params
         }, (error, response, body) => {
             if (SUCCEEDED(error, response)) {
+                console.log('folder synced ...');
                 resolve(body);
             }
             else {
@@ -47,8 +54,8 @@ function colorFolder(user, params) {
             method: 'PUT',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             json: params
         }, (error, response, body) => {
@@ -69,8 +76,8 @@ function syncContact(user, params) {
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             json: params
         }, (error, response, body) => {
@@ -100,8 +107,8 @@ function lock(user, args) {
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             time: true,
             json: args
@@ -131,8 +138,8 @@ function decrypt(user, args) {
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             time: true,
             json: args
@@ -159,8 +166,8 @@ function obj2pdf(user, args) {
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2 //,
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             time: true,
             json: args
@@ -187,8 +194,8 @@ function options(user, args) {
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             json: args
         }, (error, response, body) => {
@@ -209,8 +216,8 @@ function calcColor(user, cloudKey) {
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             json: {
                 folders: [],
@@ -236,8 +243,8 @@ function scopeFolder(user, scope) {
             method: 'PUT',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             json: scope
         }, (error, response, body) => {
@@ -258,8 +265,8 @@ function scopeDocument(user, objectId, scope) {
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId": get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             json: {
                 objectId: objectId,
@@ -276,3 +283,4 @@ function scopeDocument(user, objectId, scope) {
     });
 }
 exports.scopeDocument = scopeDocument;
+//# sourceMappingURL=apishield.js.map

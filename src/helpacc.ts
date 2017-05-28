@@ -76,6 +76,7 @@ export function registerTokenAccount(db: CDb, user: IUser, account: IAccount, to
     });
 }
 
+/*
 export function accType2ShieldoxType(type: ACCOUNT_TYPE): number {
    switch(type){
        case ACCOUNT_TYPE.DROPBOX:
@@ -88,6 +89,7 @@ export function accType2ShieldoxType(type: ACCOUNT_TYPE): number {
           return 2;
    }
 }
+*/
 
 function SUCCEEDED(error: any, response: any): boolean {
     if (null == response || typeof response == 'undefined') {
@@ -108,8 +110,9 @@ export function registerShieldAccount(db: CDb, account: IUserAccount): Promise<I
             json:{
                owner: {email: account.user.email},
                token: {data:  account.token.token_hash},
-               accountId: account.account.key,
-               type: accType2ShieldoxType(account.account.type)
+               accountId: ('0.0.' + account.account.type + '.' + cryptojs.MD5(account.account.key).toString()),
+               name: account.account.key,
+               type: account.account.type
             }
         },(error: any, response: any, body: any)=>{
             if (!SUCCEEDED(error,response)){
@@ -188,7 +191,7 @@ export function authorize(db: CDb, authorization: string, accId: string, accType
         var user:          IUser;    // system user
         var account:       IAccount; // cloud account
         if (typeof accType == 'undefined'){
-            accType = '2';
+            accType = '5';
         }
         var itype: ACCOUNT_TYPE = parseInt(accType);
 

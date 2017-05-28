@@ -214,6 +214,7 @@ function rest_list_files_metadata(user: ILoginInfo, item: any, pretry? : ICountA
 export function rest_file_contacts(user: ILoginInfo, id: string, pretry? : ICountArg): Promise<IGContact[]>{
     return new Promise((resolve,reject)=>{
         const url: string = '/drive/items/' + id + '/permissions'
+       
         request({
              url: ONE_DRIVE_URL + url, 
              method: 'GET',
@@ -225,6 +226,9 @@ export function rest_file_contacts(user: ILoginInfo, id: string, pretry? : ICoun
             var statusCode = SUCCESS('rest_file_contacts', error,response,body);
              if (statusCode >= 200 && statusCode < 300)
              {
+                 console.log('begin debugging contacts ....');
+                
+
                  if (typeof body.value != 'undefined'){
                      body.value.forEach((e)=>{
                          if (typeof e.invitation == 'object' && _.isString(e.invitation.email)){
@@ -236,16 +240,18 @@ export function rest_file_contacts(user: ILoginInfo, id: string, pretry? : ICoun
                                      name = e.grantedTo.user.displayName;
                                  }
                              buffer.push({emailAddress: email,name: name,role: e.roles[0]});
-                         }else if (typeof e.grantedTo     == 'undefined' && 
+                         }/*else if (typeof e.grantedTo     == 'undefined' && 
                                    typeof e.invitation    == 'undefined'){
                                        if (typeof e.roles == 'object' && e.roles.length > 0){
                                            if (e.roles[0] == 'write' || e.roles[0]== 'sp.owner'){
                                                 buffer.push({emailAddress: user.account.account.key, name: '',role: 'owner'});
                                            }
                                        }
-                                   }
+                                   } */
                      });
                     
+                    result.push({emailAddress: user.account.account.key, name: '',role: 'owner'});
+
                     _.each(_.groupBy(buffer,'emailAddress'),(value: IGContact[], key: string)=>{
                         result.push(value[0]);
                     });
@@ -256,7 +262,9 @@ export function rest_file_contacts(user: ILoginInfo, id: string, pretry? : ICoun
                     pretry.completed = true; 
                     pretry.body      = result ; 
                 }
-                resolve(result);
+                 console.log('end debugging contacts ....');
+                 console.log(JSON.stringify(result,null,4));
+                 resolve(result);
             }else if (statusCode == 500 || statusCode == 403){
                 if (!pretry) { pretry = new ICountArg();}
                 if (pretry.count < 0) {
@@ -336,7 +344,7 @@ function rest_file_upload(user: ILoginInfo, content: IContentBuffer, pretry? : I
                 }
                 console.log('ULOAD ELLAPSED: [' + response.elapsedTime + ' ] ms.');
                 resolve(true);
-            }else if (statusCode == 500 || statusCode == 403){
+            }else if (statusCode == 500 || statusCode == 429|| statusCode == 503 || statusCode == 509){
                 if (!pretry) { pretry = new ICountArg();}
                 if (pretry.count < 0) {
                     if (pretry.completed){
@@ -376,7 +384,7 @@ function rest_file_download(user: ILoginInfo, id: string, pretry? : ICountArg) :
                     pretry.body      = result; 
                 }
                 resolve(result);
-            }else if (statusCode == 500 || statusCode == 403){
+            }else if (statusCode == 500 || statusCode == 429|| statusCode == 503 || statusCode == 509){
                 if (!pretry) { pretry = new ICountArg();}
                 if (pretry.count < 0) {
                     if (pretry.completed){

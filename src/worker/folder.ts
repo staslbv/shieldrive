@@ -428,32 +428,41 @@ export class CGFolderSynk extends CGEntry {
                         return this.syncFolder();
                     }
                 })
-                .then((e) => { return this.updateSharedContacts() })
-                .then((e) => { return apishield.colorFolder(this.user, { color: color, objectId: this.shieldObj.objectId }); })
+                .then((e) => { 
+                    return this.updateSharedContacts() })
+                .then((e) => { 
+                    return apishield.colorFolder(this.user, { color: color, objectId: this.shieldObj.objectId }); })
                 .then((e) => {
                     const dirty: boolean = (this.shieldObj.color > 0 && e.color == 0) || (this.shieldObj.color == 0 && e.color > 0);
                     this.shieldObj = e;
                     e['dirty'] = dirty;
                     if (dirty) {
-                         return (context = new BackgndWorker(CRest.pData, this.user, this.entryId, e.color)).getContext();
+                        return (context = new BackgndWorker(CRest.pData, this.user, this.entryId, e.color)).getContext();
                     }else{
                          resolve(e);
                     }
                 })
                 .then((e)=>{
-                    if (e.context.frunning){
-                        FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>>      CANCELING CURRENT SCAN');
-                        return context.cancelScan(this.shieldObj.color > 0);
-                    }else if (e.enable){
-                        FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>       BEGINNING NEW SCAN');
-                        return context.beginScan();
+                    if (typeof e != 'undefined') 
+                    {
+                        if (e.context.frunning) {
+                            FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>>      CANCELING CURRENT SCAN');
+                            return context.cancelScan(this.shieldObj.color > 0);
+                        } else if (e.enable) {
+                            FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>       BEGINNING NEW SCAN');
+                            return context.beginScan();
+                        } else {
+                            FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>       NO ACTION TAKEN');
+                            resolve(e);
+                        }
                     }else{
-                        FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>       NO ACTION TAKEN');
-                        resolve(e);
+                        console.log('Unable to get worker response ...');
+                        reject();
                     }
                 })
                 .then((e)=>{
                     if (!context.statusObj.fcancelPending){
+                         console.log('processing  batch spawn..');
                          this.batchSpawn(this.shieldObj, context);
                     }else{
                          FIELD.Log.log('>>>>>>>>>>>>>>>>>>>>       CANCELATION PENDING ...');

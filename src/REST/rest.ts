@@ -17,14 +17,22 @@ import * as FIELD from   '../constant';
 export class CRest{
     app:               express;
     PORT:              number;
+    server:            any;
+    socket:            any;
     static pData:      CDb;
    
     Listen(port: number): Promise<boolean>{
          this.PORT = port;
          return new Promise<boolean>((resolve,reject)=>{
+             /*
+             this.server = require('http').Server(this.app);
+             this.socket = require('socket.io')(this.server);
+*/
              this.app.listen(port,()=>{
                  console.log('server listens on port: ' + port);
-                 resolve();});
+
+                 resolve();
+                });
          });
     }
     static requireAuthorization(req,res,next){

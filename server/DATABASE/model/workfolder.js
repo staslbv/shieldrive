@@ -116,3 +116,4 @@ module.exports = function (source, type) {
     });
     return db;
 };
+//# sourceMappingURL=workfolder.js.map

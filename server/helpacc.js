@@ -64,19 +64,20 @@ function registerTokenAccount(db, user, account, token) {
     });
 }
 exports.registerTokenAccount = registerTokenAccount;
-function accType2ShieldoxType(type) {
-    switch (type) {
-        case constant_1.ACCOUNT_TYPE.DROPBOX:
-            return 3;
-        case constant_1.ACCOUNT_TYPE.DRIVE:
-            return 2;
-        case constant_1.ACCOUNT_TYPE.ONEDRIVE:
-            return 9;
-        default:
-            return 2;
-    }
+/*
+export function accType2ShieldoxType(type: ACCOUNT_TYPE): number {
+   switch(type){
+       case ACCOUNT_TYPE.DROPBOX:
+          return 3;
+       case ACCOUNT_TYPE.DRIVE:
+          return 2;
+       case ACCOUNT_TYPE.ONEDRIVE:
+          return 9;
+       default:
+          return 2;
+   }
 }
-exports.accType2ShieldoxType = accType2ShieldoxType;
+*/
 function SUCCEEDED(error, response) {
     if (null == response || typeof response == 'undefined') {
         return false;
@@ -95,8 +96,9 @@ function registerShieldAccount(db, account) {
             json: {
                 owner: { email: account.user.email },
                 token: { data: account.token.token_hash },
-                accountId: account.account.key,
-                type: accType2ShieldoxType(account.account.type)
+                accountId: ('0.0.' + account.account.type + '.' + cryptojs.MD5(account.account.key).toString()),
+                name: account.account.key,
+                type: account.account.type
             }
         }, (error, response, body) => {
             if (!SUCCEEDED(error, response)) {
@@ -175,7 +177,7 @@ function authorize(db, authorization, accId, accType) {
         var user; // system user
         var account; // cloud account
         if (typeof accType == 'undefined') {
-            accType = '2';
+            accType = '5';
         }
         var itype = parseInt(accType);
         if (typeof authorization == 'undefined' || typeof accId == 'undefined') {
@@ -232,3 +234,4 @@ function authorize(db, authorization, accId, accType) {
     });
 }
 exports.authorize = authorize;
+//# sourceMappingURL=helpacc.js.map

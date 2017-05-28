@@ -5,6 +5,7 @@
         "module": "commonjs",
         "rootDir": "src",
         "outDir": "server",
+        "sourceMap": true,
         "types": [
             // add node as an option
             "node"

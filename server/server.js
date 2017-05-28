@@ -12,3 +12,4 @@ db.initialize().then(() => {
 }, (reject) => {
     console.log('Server error, unable to set up database ...');
 });
+//# sourceMappingURL=server.js.map

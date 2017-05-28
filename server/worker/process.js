@@ -25,3 +25,4 @@ module.exports = function (input, done) {
         this.kill();
     }
 };
+//# sourceMappingURL=process.js.map

@@ -26,3 +26,4 @@ function authorize(db, token) {
     });
 }
 exports.authorize = authorize;
+//# sourceMappingURL=middleware.js.map

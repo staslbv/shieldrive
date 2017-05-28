@@ -138,6 +138,7 @@ function rest_file_contacts(user, id, pretry) {
             const result = [];
             var statusCode = SUCCESS('rest_file_contacts', error, response, body);
             if (statusCode >= 200 && statusCode < 300) {
+                console.log('begin debugging contacts ....');
                 if (typeof body.value != 'undefined') {
                     body.value.forEach((e) => {
                         if (typeof e.invitation == 'object' && _.isString(e.invitation.email)) {
@@ -149,16 +150,16 @@ function rest_file_contacts(user, id, pretry) {
                                 name = e.grantedTo.user.displayName;
                             }
                             buffer.push({ emailAddress: email, name: name, role: e.roles[0] });
-                        }
-                        else if (typeof e.grantedTo == 'undefined' &&
-                            typeof e.invitation == 'undefined') {
-                            if (typeof e.roles == 'object' && e.roles.length > 0) {
-                                if (e.roles[0] == 'write' || e.roles[0] == 'sp.owner') {
-                                    buffer.push({ emailAddress: user.account.account.key, name: '', role: 'owner' });
-                                }
-                            }
-                        }
+                        } /*else if (typeof e.grantedTo     == 'undefined' &&
+                                  typeof e.invitation    == 'undefined'){
+                                      if (typeof e.roles == 'object' && e.roles.length > 0){
+                                          if (e.roles[0] == 'write' || e.roles[0]== 'sp.owner'){
+                                               buffer.push({emailAddress: user.account.account.key, name: '',role: 'owner'});
+                                          }
+                                      }
+                                  } */
                     });
+                    result.push({ emailAddress: user.account.account.key, name: '', role: 'owner' });
                     _.each(_.groupBy(buffer, 'emailAddress'), (value, key) => {
                         result.push(value[0]);
                     });
@@ -167,6 +168,8 @@ function rest_file_contacts(user, id, pretry) {
                     pretry.completed = true;
                     pretry.body = result;
                 }
+                console.log('end debugging contacts ....');
+                console.log(JSON.stringify(result, null, 4));
                 resolve(result);
             }
             else if (statusCode == 500 || statusCode == 403) {
@@ -251,7 +254,7 @@ function rest_file_upload(user, content, pretry) {
                 console.log('ULOAD ELLAPSED: [' + response.elapsedTime + ' ] ms.');
                 resolve(true);
             }
-            else if (statusCode == 500 || statusCode == 403) {
+            else if (statusCode == 500 || statusCode == 429 || statusCode == 503 || statusCode == 509) {
                 if (!pretry) {
                     pretry = new constant_1.ICountArg();
                 }
@@ -296,7 +299,7 @@ function rest_file_download(user, id, pretry) {
                 }
                 resolve(result);
             }
-            else if (statusCode == 500 || statusCode == 403) {
+            else if (statusCode == 500 || statusCode == 429 || statusCode == 503 || statusCode == 509) {
                 if (!pretry) {
                     pretry = new constant_1.ICountArg();
                 }
@@ -397,3 +400,4 @@ function file_download(user, id) {
     });
 }
 exports.file_download = file_download;
+//# sourceMappingURL=onedrive.js.map

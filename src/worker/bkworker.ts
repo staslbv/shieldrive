@@ -81,28 +81,17 @@ export class BackgndWorker
                     return new Promise<boolean>((resolve,reject)=>{resolve(true)});
                 }
              })
-             /*
-             .then(()=>{ // handle is running
-                if (this.statusObj.fbackGnd){
-                     fresetRunRequired = ((!this.statusObj.frunning) || (this.statusObj.processId != process.pid));
-                }else{
-                   // fresetRunRequired = true;
-                }
-                if (fresetRunRequired){
-                    console.log('REANIMATING ...');
-                    this.statusObj.frunning = false;
-                    return this.db.workfolder.stopRunning(this.statusObj.id);
-                }else{
-                    return new Promise<boolean>((resolve,reject)=>{resolve(true)});
-                }
-             }) */
              .then(()=>{
                  this.FLAG_ENABLE_RUN_PROMISE_CHAIN = (
                      this.statusObj.fbackGnd && 
                     !this.statusObj.frunning);
                  resolve(this.statusObj);
              })
-             .catch((e)=>reject(e));
+             .catch((e)=>
+                 {
+                     console.log('REJECT loadJobObjectAndGetRunning');
+                     reject(e);
+                 });
          });
      }
 

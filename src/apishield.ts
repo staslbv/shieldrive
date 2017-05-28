@@ -13,6 +13,8 @@ import * as  JSONStream from 'JSONStream';
 import * as stream from 'stream';
 import * as  es from     'event-stream';
 
+const cryptojs          = require('crypto-js');
+
 export interface IShieldFolderSyncRef{
     parentId: string; // account objectId
     folderId: string;
@@ -108,6 +110,11 @@ export function SUCCEEDED(error: any, response: any): boolean {
     return false;
 }
 
+export function get_accId(user: ILoginInfo) : string
+{
+    return ('0.0.' + user.account.account.type + '.' + cryptojs.MD5(user.account.account.key).toString());
+}
+
 export function syncFolder(user: ILoginInfo, id: string, name: string): Promise<IShieldFolder>{
      return new Promise((resolve,reject)=>{
         const params : IShieldFolderSyncRef = {
@@ -117,18 +124,20 @@ export function syncFolder(user: ILoginInfo, id: string, name: string): Promise<
         };
         
         console.log('sync folder : ' + name);
+        console.log(JSON.stringify(user,null,4));
 
         request({
              url: SHIELDOX_BASE_URL + '/account/CreateFolder', 
              method: 'POST',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId":  user.account.account.key,
-                 "sldx_accType": 2
+                 "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              json: params
         },(error: any, response: any, body: IShieldFolder)=>{
             if(SUCCEEDED(error,response)){
+                 console.log('folder synced ...');
                 resolve(body);
             }else{
                 reject();
@@ -144,8 +153,8 @@ export function colorFolder(user: ILoginInfo, params: IShieldFolderColorSyncRef)
              method: 'PUT',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId":  user.account.account.key,
-                 "sldx_accType": 2
+                 "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              json: params
         },(error: any, response: any, body: IShieldFolder)=>{
@@ -165,8 +174,8 @@ export function syncContact(user: ILoginInfo, params: IShieldContact): Promise<I
              method: 'POST',
              headers: {
                  "Authorization" : 'Basic ' + user.token.access_token,
-                 "sldx_accId"    :  user.account.account.key,
-                 "sldx_accType"  : 2
+                 "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              json: params
         },(error: any, response: any, body: IShieldContact)=>{
@@ -195,8 +204,8 @@ export function lock(user: ILoginInfo, args: IShieldoxIOProtectArgs): Promise<IS
              method: 'POST',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId"   : user.account.account.key,
-                 "sldx_accType" : 2
+                 "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              time:     true,
              json: args
@@ -225,8 +234,8 @@ export function decrypt(user: ILoginInfo, args: IDecryptArgs): Promise<IDecryptA
              method: 'POST',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId"   : user.account.account.key,
-                 "sldx_accType" : 2
+                  "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              time:     true,
              json: args
@@ -251,8 +260,8 @@ export function obj2pdf(user: ILoginInfo, args: IConvertArgs): Promise<IDecryptA
              method: 'POST',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId"   : user.account.account.key,
-                 "sldx_accType" : 2//,
+                  "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              time:     true,
              json: args
@@ -277,8 +286,8 @@ export function options(user: ILoginInfo, args: any): Promise<IShieldPathPermiss
              method: 'POST',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId": user.account.account.key,
-                 "sldx_accType": 2
+                 "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              json: args
 
@@ -299,8 +308,8 @@ export function calcColor(user: ILoginInfo, cloudKey: string) : Promise<number>{
             method: 'POST',
             headers: {
                 "Authorization": 'Basic ' + user.token.access_token,
-                "sldx_accId": user.account.account.key,
-                "sldx_accType": 2
+                "sldx_accId":  get_accId(user),
+                "sldx_accType": user.account.account.type
             },
             json: {
                 folders: [],
@@ -326,8 +335,8 @@ export function scopeFolder(user: ILoginInfo, scope: IShieldFolderScopeRef): Pro
              method: 'PUT',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId":  user.account.account.key,
-                 "sldx_accType": 2
+                 "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              json: scope
         },(error: any, response: any, body: IShieldFolder)=>{
@@ -347,8 +356,8 @@ export function scopeDocument(user: ILoginInfo, objectId: string, scope: IShield
              method: 'POST',
              headers: {
                  "Authorization": 'Basic ' + user.token.access_token,
-                 "sldx_accId":  user.account.account.key,
-                 "sldx_accType": 2
+                 "sldx_accId":  get_accId(user),
+                 "sldx_accType": user.account.account.type
                 },
              json: {
                  objectId: objectId,

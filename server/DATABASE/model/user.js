@@ -68,3 +68,4 @@ module.exports = function (source, type) {
     });
     return db;
 };
+//# sourceMappingURL=user.js.map

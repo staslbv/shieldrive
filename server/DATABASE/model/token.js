@@ -96,3 +96,4 @@ module.exports = function (source, type) {
     });
     return db;
 };
+//# sourceMappingURL=token.js.map

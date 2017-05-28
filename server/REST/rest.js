@@ -11,6 +11,10 @@ class CRest {
     Listen(port) {
         this.PORT = port;
         return new Promise((resolve, reject) => {
+            /*
+            this.server = require('http').Server(this.app);
+            this.socket = require('socket.io')(this.server);
+*/
             this.app.listen(port, () => {
                 console.log('server listens on port: ' + port);
                 resolve();
@@ -211,3 +215,4 @@ class CRest {
     }
 }
 exports.CRest = CRest;
+//# sourceMappingURL=rest.js.map

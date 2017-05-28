@@ -22,7 +22,7 @@ class CDb {
                     */
             this.sequelize = new Sequelize(undefined, undefined, undefined, {
                 "dialect": "sqlite",
-                "storage": __dirname + "/localdbv8.sqlite",
+                "storage": __dirname + "/localdbv9.sqlite",
                 "logging": false
             });
             this.user = this.sequelize.import(__dirname + '/model/user.js');
@@ -57,3 +57,4 @@ class CDb {
     }
 }
 exports.CDb = CDb;
+//# sourceMappingURL=db.js.map

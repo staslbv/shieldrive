@@ -36,7 +36,7 @@ export class CDb{
           
              this.sequelize = new Sequelize(undefined,undefined,undefined,{
                     "dialect": "sqlite",
-                    "storage": __dirname + "/localdbv8.sqlite",
+                    "storage": __dirname + "/localdbv9.sqlite",
                     "logging": false
              });
             

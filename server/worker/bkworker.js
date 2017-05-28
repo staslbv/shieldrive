@@ -77,7 +77,10 @@ class BackgndWorker {
                     !this.statusObj.frunning);
                 resolve(this.statusObj);
             })
-                .catch((e) => reject(e));
+                .catch((e) => {
+                console.log('REJECT loadJobObjectAndGetRunning');
+                reject(e);
+            });
         });
     }
     // load or create object and determine reset flags
@@ -103,3 +106,4 @@ class BackgndWorker {
     }
 }
 exports.BackgndWorker = BackgndWorker;
+//# sourceMappingURL=bkworker.js.map
